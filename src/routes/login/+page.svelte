@@ -7,9 +7,11 @@
 <div class="flex min-h-screen items-center justify-center p-6 bg-slate-950">
 	<div class="w-full max-w-md space-y-8 rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-2xl">
 		<div class="text-center space-y-2">
-			<div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 shadow-xl shadow-indigo-600/30 text-white font-black text-2xl mb-2">
-				Y
-			</div>
+			<img
+				src="/logo.png"
+				alt="YOUTHs Logo"
+				class="mx-auto w-16 h-16 object-contain rounded-2xl drop-shadow-xl mb-2"
+			/>
 			<h1 class="text-2xl font-bold tracking-tight text-white">YOUTHs CEO Command Center</h1>
 			<p class="text-sm text-slate-400">Executive Authentication & Organizational Control</p>
 		</div>

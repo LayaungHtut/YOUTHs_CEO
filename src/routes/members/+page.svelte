@@ -16,7 +16,8 @@
 		Copy,
 		Check,
 		X,
-		Database
+		Database,
+		Mail
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -24,6 +25,7 @@
 	let showAddModal = $state(false);
 	let showCredentialsModal = $state(false);
 	let showRoleModal = $state(false);
+	let showResetModal = $state(false);
 	let selectedUserForRole = $state<any>(null);
 
 	let copiedPassword = $state(false);
@@ -46,6 +48,13 @@
 		if (form?.success && form?.createdMember) {
 			showAddModal = false;
 			showCredentialsModal = true;
+		}
+	});
+
+	// Trigger reset modal if password was reset
+	$effect(() => {
+		if (form?.success && form?.resetInfo) {
+			showResetModal = true;
 		}
 	});
 
@@ -274,6 +283,17 @@
 												<Shield class="w-4 h-4" />
 											</button>
 
+											<form method="POST" action="?/resetPassword" class="inline" onsubmit={(e) => { if (!confirm(`Generate new temporary password and email credentials to ${member.email}?`)) e.preventDefault(); }}>
+												<input type="hidden" name="userId" value={member.id} />
+												<button
+													type="submit"
+													class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition"
+													title="Reset Password & Send Email"
+												>
+													<KeyRound class="w-4 h-4" />
+												</button>
+											</form>
+
 											<form method="POST" action="?/updateStatus" class="inline">
 												<input type="hidden" name="userId" value={member.id} />
 												<input
@@ -362,6 +382,19 @@
 							class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
 						/>
 					</div>
+				</div>
+
+				<div>
+					<label for="deliveryEmail" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+						Delivery Email <span class="text-slate-500 lowercase">(optional personal email to deliver credentials)</span>
+					</label>
+					<input
+						type="email"
+						id="deliveryEmail"
+						name="deliveryEmail"
+						placeholder="e.g. personal@gmail.com (defaults to assigned email)"
+						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+					/>
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -496,10 +529,93 @@
 				</div>
 			</div>
 
+			{#if form.createdMember.emailSent}
+				<div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+					<Mail class="w-4 h-4 shrink-0" />
+					<span>Welcome email dispatched to <strong>{form.createdMember.recipientEmail || form.createdMember.email}</strong> with login credentials.</span>
+				</div>
+			{:else if form.createdMember.emailError}
+				<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+					<AlertTriangle class="w-4 h-4 shrink-0" />
+					<span>Email delivery notice: {form.createdMember.emailError}</span>
+				</div>
+			{/if}
+
 			<div class="flex justify-end">
 				<button
 					type="button"
 					onclick={() => (showCredentialsModal = false)}
+					class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+				>
+					Done
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Password Reset Modal -->
+{#if showResetModal && form?.resetInfo}
+	<div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+		<div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-5">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-800">
+				<h3 class="text-base font-bold text-white flex items-center gap-2">
+					<KeyRound class="w-5 h-5 text-amber-400" />
+					<span>Temporary Password Generated</span>
+				</h3>
+				<button
+					type="button"
+					aria-label="Close Reset Modal"
+					onclick={() => (showResetModal = false)}
+					class="text-slate-400 hover:text-white"
+				>
+					<X class="w-5 h-5" />
+				</button>
+			</div>
+
+			<div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+				<div>
+					<span class="text-[10px] font-semibold text-slate-500 uppercase">Username</span>
+					<div class="text-sm font-bold text-white">{form.resetInfo.username}</div>
+				</div>
+
+				<div class="flex items-center justify-between">
+					<div>
+						<span class="text-[10px] font-semibold text-slate-500 uppercase">New Temporary Password</span>
+						<div class="text-sm font-mono font-bold text-amber-400">{form.resetInfo.newPassword}</div>
+					</div>
+					<button
+						type="button"
+						onclick={() => copyToClipboard(form.resetInfo.newPassword, 'password')}
+						class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs"
+					>
+						{#if copiedPassword}
+							<Check class="w-3.5 h-3.5 text-emerald-400" />
+							<span class="text-emerald-400">Copied</span>
+						{:else}
+							<Copy class="w-3.5 h-3.5" />
+							<span>Copy</span>
+						{/if}
+					</button>
+				</div>
+			</div>
+
+			{#if form.resetInfo.emailSent}
+				<div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+					<Mail class="w-4 h-4 shrink-0" />
+					<span>Updated credentials email dispatched successfully.</span>
+				</div>
+			{:else if form.resetInfo.emailError}
+				<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+					<AlertTriangle class="w-4 h-4 shrink-0" />
+					<span>Email delivery notice: {form.resetInfo.emailError}</span>
+				</div>
+			{/if}
+
+			<div class="flex justify-end">
+				<button
+					type="button"
+					onclick={() => (showResetModal = false)}
 					class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
 				>
 					Done

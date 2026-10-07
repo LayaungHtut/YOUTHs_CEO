@@ -18,11 +18,11 @@
 		class="w-full max-w-lg space-y-8 rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl"
 	>
 		<div class="space-y-2 text-center">
-			<div
-				class="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-2xl font-black text-white shadow-xl shadow-indigo-600/30"
-			>
-				Y
-			</div>
+			<img
+				src="/logo.png"
+				alt="YOUTHs Logo"
+				class="mx-auto h-16 w-16 object-contain rounded-2xl drop-shadow-xl mb-2"
+			/>
 			<h1 class="text-2xl font-bold tracking-tight text-white">YOUTHs CEO Command Center</h1>
 			<p class="text-sm text-slate-400">
 				First-Run Master Initialization. Create the organization's primary executive account.

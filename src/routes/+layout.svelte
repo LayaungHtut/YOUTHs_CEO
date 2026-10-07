@@ -61,9 +61,11 @@
 		<!-- Mobile Top Nav -->
 		<header class="md:hidden flex items-center justify-between px-4 py-3 bg-slate-950/80 backdrop-blur border-b border-slate-800 sticky top-0 z-50">
 			<div class="flex items-center gap-2.5">
-				<div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/20">
-					Y
-				</div>
+				<img
+					src="/logo.png"
+					alt="YOUTHs Logo"
+					class="w-8 h-8 object-contain rounded-lg drop-shadow"
+				/>
 				<span class="font-bold tracking-tight text-white">YOUTHs CEO</span>
 			</div>
 			<div class="flex items-center gap-2">
@@ -91,9 +93,11 @@
 			<!-- Brand Header -->
 			<div class="px-6 py-5 border-b border-slate-800/60 flex items-center justify-between">
 				<div class="flex items-center gap-3">
-					<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">
-						Y
-					</div>
+					<img
+						src="/logo.png"
+						alt="YOUTHs Logo"
+						class="w-9 h-9 object-contain rounded-xl drop-shadow-md"
+					/>
 					<div>
 						<div class="font-bold text-base text-white tracking-tight leading-none">YOUTHs</div>
 						<div class="text-[11px] font-medium text-indigo-400 mt-1 uppercase tracking-wider">Command Center</div>

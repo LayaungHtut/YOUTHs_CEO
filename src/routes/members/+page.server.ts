@@ -6,6 +6,8 @@ import { hashPassword } from '$lib/server/auth/password';
 import { grantInitialPoints } from '$lib/server/services/pointsService';
 import { generateIntegrationToken } from '$lib/server/services/progressSyncService';
 import { logAudit, AuditActions } from '$lib/server/services/auditService';
+import { sendAccountCredentialsEmail } from '$lib/server/services/emailService';
+import { getSetting } from '$lib/server/services/settingsService';
 import crypto from 'node:crypto';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -65,6 +67,7 @@ export const actions: Actions = {
 		const departmentId = data.get('departmentId') as string;
 		const role = (data.get('role') as any) || 'MEMBER';
 		const customPassword = (data.get('customPassword') as string)?.trim();
+		const deliveryEmail = (data.get('deliveryEmail') as string)?.trim().toLowerCase();
 
 		if (!fullName || !username || !email) {
 			return fail(400, { error: 'Full name, username, and email are required.' });
@@ -110,6 +113,23 @@ export const actions: Actions = {
 			metadata: { fullName, username, email, role, departmentId }
 		});
 
+		// Retrieve org name for the email template
+		const orgSetting = await getSetting<{ value: string }>('org.name');
+		const rawOrgName = orgSetting?.value || '';
+		const orgName = rawOrgName.split('(')[0]?.trim() || undefined;
+
+		// Dispatch credentials email (defaults to assigned email if deliveryEmail is not specified)
+		const recipientEmail = deliveryEmail || email;
+		const emailResult = await sendAccountCredentialsEmail({
+			to: recipientEmail,
+			fullName,
+			username,
+			email,
+			password: tempPassword,
+			role,
+			orgName
+		});
+
 		return {
 			success: true,
 			createdMember: {
@@ -118,7 +138,10 @@ export const actions: Actions = {
 				username: created.username,
 				email: created.email,
 				tempPassword,
-				syncToken
+				syncToken,
+				recipientEmail,
+				emailSent: emailResult.sent,
+				emailError: emailResult.error
 			}
 		};
 	},
@@ -200,12 +223,28 @@ export const actions: Actions = {
 			targetId: userId
 		});
 
+		const orgSetting = await getSetting<{ value: string }>('org.name');
+		const rawOrgName = orgSetting?.value || '';
+		const orgName = rawOrgName.split('(')[0]?.trim() || undefined;
+
+		const emailResult = await sendAccountCredentialsEmail({
+			to: target.email,
+			fullName: target.fullName,
+			username: target.username,
+			email: target.email,
+			password: newTempPassword,
+			role: target.role,
+			orgName
+		});
+
 		return {
 			success: true,
 			resetInfo: {
 				userId,
 				username: target.username,
-				newPassword: newTempPassword
+				newPassword: newTempPassword,
+				emailSent: emailResult.sent,
+				emailError: emailResult.error
 			}
 		};
 	}
