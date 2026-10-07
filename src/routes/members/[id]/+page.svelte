@@ -17,12 +17,14 @@
 		RefreshCw,
 		X,
 		History,
-		Filter
+		Filter,
+		Trash2
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
 	let showAdjustModal = $state(false);
+	let showDeleteModal = $state(false);
 	let activeTab = $state<'tasks' | 'points' | 'achievements' | 'sync'>('tasks');
 	let copiedToken = $state(false);
 
@@ -46,6 +48,15 @@
 			<span>Back to Organization Directory</span>
 		</a>
 	</div>
+
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
 
 	<!-- Member Hero Header Card -->
 	<div
@@ -109,6 +120,18 @@
 				<Plus class="h-4 w-4" />
 				<span>Adjust Points</span>
 			</button>
+
+			{#if data.member.role !== 'CEO'}
+				<button
+					type="button"
+					onclick={() => (showDeleteModal = true)}
+					class="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20 hover:text-rose-200"
+					title="Remove Member Account"
+				>
+					<Trash2 class="h-4 w-4" />
+					<span>Remove Member</span>
+				</button>
+			{/if}
 		</div>
 	</div>
 
@@ -700,6 +723,70 @@
 						Record in Ledger
 					</button>
 				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Delete Member Confirmation Modal -->
+{#if showDeleteModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+		<div
+			class="w-full max-w-md space-y-5 rounded-2xl border border-rose-500/30 bg-slate-900 p-6 shadow-2xl shadow-rose-950/40"
+		>
+			<div class="flex items-center justify-between border-b border-slate-800 pb-3">
+				<div class="flex items-center gap-2.5 text-rose-400">
+					<div class="rounded-lg border border-rose-500/20 bg-rose-500/10 p-1.5">
+						<Trash2 class="h-5 w-5" />
+					</div>
+					<h3 class="text-base font-bold text-white">Remove Member Account</h3>
+				</div>
+				<button
+					type="button"
+					aria-label="Close Delete Modal"
+					onclick={() => (showDeleteModal = false)}
+					class="text-slate-400 hover:text-white"
+				>
+					<X class="h-5 w-5" />
+				</button>
+			</div>
+
+			<div class="space-y-3">
+				<p class="text-xs leading-relaxed text-slate-300">
+					Are you sure you want to permanently delete the account for
+					<strong class="text-white">{data.member.fullName}</strong>
+					(<span class="text-indigo-300">@{data.member.username}</span>)?
+				</p>
+				<div
+					class="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs leading-relaxed text-rose-300/90"
+				>
+					<div class="mb-1 flex items-center gap-1.5 font-semibold text-rose-200">
+						<AlertTriangle class="h-3.5 w-3.5 shrink-0" />
+						Permanent Action
+					</div>
+					This will permanently remove the member's account, login sessions, and database connection. Tasks created by this member will be reassigned to the CEO.
+				</div>
+			</div>
+
+			<form
+				method="POST"
+				action="?/deleteMember"
+				class="flex items-center justify-end gap-3 border-t border-slate-800 pt-3"
+			>
+				<button
+					type="button"
+					onclick={() => (showDeleteModal = false)}
+					class="px-4 py-2 text-xs font-semibold text-slate-400 transition hover:text-white"
+				>
+					Cancel
+				</button>
+				<button
+					type="submit"
+					class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-600/30 transition hover:bg-rose-500 focus:outline-none"
+				>
+					<Trash2 class="h-3.5 w-3.5" />
+					<span>Permanently Delete</span>
+				</button>
 			</form>
 		</div>
 	</div>

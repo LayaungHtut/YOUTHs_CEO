@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { hashPassword, verifyPassword, validatePasswordStrength } from './password';
+import {
+	hashPassword,
+	verifyPassword,
+	validatePasswordStrength,
+	generateTemporaryPassword
+} from './password';
 import { hasRole } from './permissions';
 import type { User } from '../db/types';
 
@@ -25,6 +30,15 @@ describe('Auth & Cryptography', () => {
 		expect(validatePasswordStrength('ValidP@ssw0rd').valid).toBe(true);
 	});
 
+	it('generates secure temporary passwords satisfying strength criteria', () => {
+		for (let i = 0; i < 20; i++) {
+			const tempPassword = generateTemporaryPassword();
+			expect(tempPassword.length).toBeGreaterThanOrEqual(14);
+			const strength = validatePasswordStrength(tempPassword);
+			expect(strength.valid).toBe(true);
+		}
+	});
+
 	it('enforces RBAC permissions', () => {
 		const ceoUser: User = {
 			id: '1',
@@ -38,7 +52,8 @@ describe('Auth & Cryptography', () => {
 			accountStatus: 'ACTIVE',
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			lastLoginAt: null
+			lastLoginAt: null,
+			mustChangePassword: false
 		};
 
 		const memberUser: User = {

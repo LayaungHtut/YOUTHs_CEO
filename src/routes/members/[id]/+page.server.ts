@@ -1,4 +1,4 @@
-import { error, fail, type Actions } from '@sveltejs/kit';
+import { error, fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import type { TaskStatus } from '$lib/server/db/types';
@@ -6,6 +6,7 @@ import { requireRole } from '$lib/server/auth/permissions';
 import { adjustPointsManually, getUserPointsSummary } from '$lib/server/services/pointsService';
 import { generateIntegrationToken, revokeIntegrationToken } from '$lib/server/services/progressSyncService';
 import { getMemberTaskHistory } from '$lib/server/services/taskService';
+import { logAudit, AuditActions } from '$lib/server/services/auditService';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	requireRole(locals.user, 'CEO');
@@ -116,5 +117,48 @@ export const actions: Actions = {
 
 		await revokeIntegrationToken(params.id, locals.user!.id);
 		return { success: true, revoked: true };
+	},
+
+	deleteMember: async ({ params, locals }) => {
+		requireRole(locals.user, 'CEO');
+		if (!params.id) throw error(400, 'Member ID is required');
+
+		if (params.id === locals.user!.id) {
+			return fail(400, { error: 'You cannot delete your own CEO account.' });
+		}
+
+		const target = await db.getUserById(params.id);
+		if (!target) {
+			throw error(404, 'Member not found');
+		}
+
+		if (target.role === 'CEO') {
+			return fail(400, { error: 'Cannot delete CEO accounts.' });
+		}
+
+		try {
+			await db.deleteUser(params.id, locals.user!.id);
+
+			await logAudit({
+				actorId: locals.user!.id,
+				action: AuditActions.USER_DELETE,
+				targetType: 'USER',
+				targetId: params.id,
+				metadata: {
+					deletedFullName: target.fullName,
+					deletedUsername: target.username,
+					deletedEmail: target.email,
+					role: target.role,
+					departmentId: target.departmentId
+				}
+			});
+		} catch (err: any) {
+			console.error('[deleteMember] Error deleting member:', err);
+			return fail(500, {
+				error: err?.message || 'Failed to remove member account.'
+			});
+		}
+
+		throw redirect(303, '/members');
 	}
 };

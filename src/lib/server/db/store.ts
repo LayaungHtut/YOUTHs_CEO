@@ -247,6 +247,7 @@ export class DatabaseStore {
 			avatarUrl: user.avatarUrl || null,
 			departmentId: user.departmentId || null,
 			lastLoginAt: user.lastLoginAt || null,
+			mustChangePassword: user.mustChangePassword ?? false,
 			createdAt: user.createdAt || now,
 			updatedAt: user.updatedAt || now
 		};
@@ -264,6 +265,97 @@ export class DatabaseStore {
 		};
 		this.users.set(id, updated);
 		return updated;
+	}
+
+	async deleteUser(id: string, reassignAdminId?: string): Promise<boolean> {
+		if (!this.users.has(id)) return false;
+
+		// 1. Remove sessions
+		for (const [sId, sess] of this.sessions.entries()) {
+			if (sess.userId === id) this.sessions.delete(sId);
+		}
+
+		// 2. Remove memberConnections
+		for (const [cId, conn] of this.memberConnections.entries()) {
+			if (conn.userId === id) this.memberConnections.delete(cId);
+		}
+
+		// 3. Clear department head assignment if user was head
+		for (const [deptId, dept] of this.departments.entries()) {
+			if (dept.headUserId === id) {
+				this.departments.set(deptId, { ...dept, headUserId: null, updatedAt: new Date() });
+			}
+		}
+
+		// 4. Tasks:
+		// Delete tasks assigned to this user, and reassign tasks created by this user
+		for (const [tId, task] of this.tasks.entries()) {
+			if (task.assignedTo === id) {
+				this.tasks.delete(tId);
+			} else if (task.createdBy === id) {
+				if (reassignAdminId) {
+					this.tasks.set(tId, {
+						...task,
+						createdBy: reassignAdminId,
+						updatedAt: new Date()
+					});
+				}
+			}
+		}
+
+		// 5. Task events:
+		for (const [eId, ev] of this.taskEvents.entries()) {
+			if (ev.actorId === id) {
+				if (reassignAdminId) {
+					this.taskEvents.set(eId, { ...ev, actorId: reassignAdminId });
+				} else {
+					this.taskEvents.delete(eId);
+				}
+			}
+		}
+
+		// 6. Progress snapshots
+		for (const [psId, ps] of this.progressSnapshots.entries()) {
+			if (ps.userId === id) this.progressSnapshots.delete(psId);
+		}
+
+		// 7. Points ledger
+		for (const [pId, p] of this.pointsLedger.entries()) {
+			if (p.userId === id) {
+				this.pointsLedger.delete(pId);
+			} else if (p.createdBy === id) {
+				this.pointsLedger.set(pId, { ...p, createdBy: null });
+			}
+		}
+
+		// 8. Member achievements
+		for (const [maId, ma] of this.memberAchievements.entries()) {
+			if (ma.userId === id) this.memberAchievements.delete(maId);
+		}
+
+		// 9. Conversations & participants & messages
+		this.conversationParticipants = this.conversationParticipants.filter((cp) => cp.userId !== id);
+		for (const [mId, msg] of this.messages.entries()) {
+			if (msg.senderId === id) this.messages.delete(mId);
+		}
+		for (const [rId, receipt] of this.messageReadReceipts.entries()) {
+			if (receipt.userId === id) this.messageReadReceipts.delete(rId);
+		}
+
+		// 10. Notifications
+		for (const [nId, notif] of this.notifications.entries()) {
+			if (notif.userId === id) this.notifications.delete(nId);
+		}
+
+		// 11. Audit logs actorId -> null
+		for (const [aId, log] of this.auditLogs.entries()) {
+			if (log.actorId === id) {
+				this.auditLogs.set(aId, { ...log, actorId: null });
+			}
+		}
+
+		// 12. Delete user
+		return this.users.delete(id);
 	}
 
 	async countCeoUsers(): Promise<number> {

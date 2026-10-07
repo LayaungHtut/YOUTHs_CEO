@@ -7,6 +7,9 @@ import { logAudit, AuditActions } from '$lib/server/services/auditService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) {
+		if (locals.user.mustChangePassword) {
+			throw redirect(303, '/change-password');
+		}
 		throw redirect(303, url.searchParams.get('redirect') || '/');
 	}
 	return {
@@ -59,6 +62,10 @@ export const actions: Actions = {
 		// Create session
 		const session = await createSession(user.id);
 		setSessionCookie(cookies, session.id);
+
+		if (user.mustChangePassword) {
+			throw redirect(303, '/change-password');
+		}
 
 		throw redirect(303, redirectTo);
 	}

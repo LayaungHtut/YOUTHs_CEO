@@ -37,7 +37,12 @@ import type {
 	NewAuditLog,
 	OrgSetting
 } from './types';
-import { DEFAULT_ORG_SETTINGS, INITIAL_DEPARTMENTS, INITIAL_ACHIEVEMENTS, INITIAL_TASK_TEMPLATES } from './seed-data';
+import {
+	DEFAULT_ORG_SETTINGS,
+	INITIAL_DEPARTMENTS,
+	INITIAL_ACHIEVEMENTS,
+	INITIAL_TASK_TEMPLATES
+} from './seed-data';
 
 export class PostgresStore {
 	private drizzle: NeonHttpDatabase<typeof schema>;
@@ -52,6 +57,11 @@ export class PostgresStore {
 		if (this.initialized) return;
 
 		try {
+			// Ensure schema migrations/columns are up to date
+			await this.drizzle.execute(
+				sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false`
+			);
+
 			// Check if departments exist, if not seed initial departments
 			const [deptCount] = await this.drizzle
 				.select({ count: sql<number>`count(*)::int` })
@@ -59,14 +69,17 @@ export class PostgresStore {
 			if (Number(deptCount?.count || 0) === 0) {
 				const now = new Date();
 				for (const d of INITIAL_DEPARTMENTS) {
-					await this.drizzle.insert(schema.departments).values({
-						id: d.id,
-						name: d.name,
-						description: d.description,
-						headUserId: d.headUserId ?? null,
-						createdAt: now,
-						updatedAt: now
-					}).onConflictDoNothing();
+					await this.drizzle
+						.insert(schema.departments)
+						.values({
+							id: d.id,
+							name: d.name,
+							description: d.description,
+							headUserId: d.headUserId ?? null,
+							createdAt: now,
+							updatedAt: now
+						})
+						.onConflictDoNothing();
 				}
 			}
 
@@ -77,16 +90,19 @@ export class PostgresStore {
 			if (Number(achCount?.count || 0) === 0) {
 				const now = new Date();
 				for (const a of INITIAL_ACHIEVEMENTS) {
-					await this.drizzle.insert(schema.achievements).values({
-						id: a.id,
-						name: a.name,
-						description: a.description,
-						icon: a.icon || 'award',
-						category: a.category || 'TASKS',
-						criteria: a.criteria || '{}',
-						active: a.active ?? true,
-						createdAt: now
-					}).onConflictDoNothing();
+					await this.drizzle
+						.insert(schema.achievements)
+						.values({
+							id: a.id,
+							name: a.name,
+							description: a.description,
+							icon: a.icon || 'award',
+							category: a.category || 'TASKS',
+							criteria: a.criteria || '{}',
+							active: a.active ?? true,
+							createdAt: now
+						})
+						.onConflictDoNothing();
 				}
 			}
 
@@ -97,18 +113,21 @@ export class PostgresStore {
 			if (Number(tmplCount?.count || 0) === 0) {
 				const now = new Date();
 				for (const t of INITIAL_TASK_TEMPLATES) {
-					await this.drizzle.insert(schema.taskTemplates).values({
-						id: t.id,
-						title: t.title,
-						description: t.description,
-						departmentId: t.departmentId,
-						priority: t.priority || 'MEDIUM',
-						estimatedEffort: t.estimatedEffort || '4-6 hours',
-						requiredSkills: t.requiredSkills || '[]',
-						active: t.active ?? true,
-						createdAt: now,
-						updatedAt: now
-					}).onConflictDoNothing();
+					await this.drizzle
+						.insert(schema.taskTemplates)
+						.values({
+							id: t.id,
+							title: t.title,
+							description: t.description,
+							departmentId: t.departmentId,
+							priority: t.priority || 'MEDIUM',
+							estimatedEffort: t.estimatedEffort || '4-6 hours',
+							requiredSkills: t.requiredSkills || '[]',
+							active: t.active ?? true,
+							createdAt: now,
+							updatedAt: now
+						})
+						.onConflictDoNothing();
 				}
 			}
 
@@ -119,12 +138,15 @@ export class PostgresStore {
 			if (Number(settingsCount?.count || 0) === 0) {
 				const now = new Date();
 				for (const [key, val] of Object.entries(DEFAULT_ORG_SETTINGS)) {
-					await this.drizzle.insert(schema.orgSettings).values({
-						key,
-						value: JSON.stringify(val),
-						updatedAt: now,
-						updatedBy: null
-					}).onConflictDoNothing();
+					await this.drizzle
+						.insert(schema.orgSettings)
+						.values({
+							key,
+							value: JSON.stringify(val),
+							updatedAt: now,
+							updatedBy: null
+						})
+						.onConflictDoNothing();
 				}
 			}
 		} catch (err) {
@@ -140,7 +162,10 @@ export class PostgresStore {
 
 	// --- DEPARTMENTS ---
 	async getDepartments(): Promise<Department[]> {
-		return await this.drizzle.select().from(schema.departments).orderBy(asc(schema.departments.name));
+		return await this.drizzle
+			.select()
+			.from(schema.departments)
+			.orderBy(asc(schema.departments.name));
 	}
 
 	async getDepartmentById(id: string): Promise<Department | null> {
@@ -253,6 +278,7 @@ export class PostgresStore {
 				avatarUrl: user.avatarUrl || null,
 				departmentId: user.departmentId || null,
 				lastLoginAt: user.lastLoginAt || null,
+				mustChangePassword: user.mustChangePassword ?? false,
 				createdAt: user.createdAt || now,
 				updatedAt: user.updatedAt || now
 			})
@@ -270,6 +296,65 @@ export class PostgresStore {
 			.where(eq(schema.users.id, id))
 			.returning();
 		return updated || null;
+	}
+
+	async deleteUser(id: string, reassignAdminId?: string): Promise<boolean> {
+		const user = await this.getUserById(id);
+		if (!user) return false;
+
+		// 1. Clear department head assignment if user was head
+		await this.drizzle
+			.update(schema.departments)
+			.set({ headUserId: null, updatedAt: new Date() })
+			.where(eq(schema.departments.headUserId, id));
+
+		// Find a fallback admin (CEO) if reassignAdminId is not provided
+		let fallbackAdminId = reassignAdminId;
+		if (!fallbackAdminId) {
+			const [ceo] = await this.drizzle
+				.select({ id: schema.users.id })
+				.from(schema.users)
+				.where(eq(schema.users.role, 'CEO'))
+				.limit(1);
+			fallbackAdminId = ceo?.id;
+		}
+
+		// 2. Reassign tasks.createdBy (has onDelete: 'restrict')
+		if (fallbackAdminId) {
+			await this.drizzle
+				.update(schema.tasks)
+				.set({ createdBy: fallbackAdminId, updatedAt: new Date() })
+				.where(eq(schema.tasks.createdBy, id));
+		}
+
+		// 3. Reassign or delete taskEvents.actorId (has onDelete: 'restrict')
+		if (fallbackAdminId) {
+			await this.drizzle
+				.update(schema.taskEvents)
+				.set({ actorId: fallbackAdminId })
+				.where(eq(schema.taskEvents.actorId, id));
+		} else {
+			await this.drizzle
+				.delete(schema.taskEvents)
+				.where(eq(schema.taskEvents.actorId, id));
+		}
+
+		// 4. Delete tasks assigned to this user
+		await this.drizzle
+			.delete(schema.tasks)
+			.where(eq(schema.tasks.assignedTo, id));
+
+		// 5. Delete user from users table
+		// PostgreSQL foreign keys with CASCADE will automatically clean up:
+		// sessions, memberDatabaseConnections, memberProgressSnapshots, pointsLedger,
+		// memberAchievements, conversationParticipants, messages, messageReadReceipts, notifications
+		// And foreign keys with SET NULL will clean up taskWeeks.createdBy, auditLogs.actorId, orgSettings.updatedBy
+		const res = await this.drizzle
+			.delete(schema.users)
+			.where(eq(schema.users.id, id))
+			.returning({ id: schema.users.id });
+
+		return res.length > 0;
 	}
 
 	async countCeoUsers(): Promise<number> {
@@ -464,10 +549,7 @@ export class PostgresStore {
 	}
 
 	async deleteTask(id: string): Promise<boolean> {
-		const res = await this.drizzle
-			.delete(schema.tasks)
-			.where(eq(schema.tasks.id, id))
-			.returning();
+		const res = await this.drizzle.delete(schema.tasks).where(eq(schema.tasks.id, id)).returning();
 		return res.length > 0;
 	}
 
@@ -505,7 +587,9 @@ export class PostgresStore {
 			.select()
 			.from(schema.taskEvents)
 			.where(eq(schema.taskEvents.taskId, taskId))
-			.orderBy(order === 'asc' ? asc(schema.taskEvents.createdAt) : desc(schema.taskEvents.createdAt));
+			.orderBy(
+				order === 'asc' ? asc(schema.taskEvents.createdAt) : desc(schema.taskEvents.createdAt)
+			);
 	}
 
 	async getAllTaskEvents(filters?: {
@@ -529,14 +613,22 @@ export class PostgresStore {
 			.select()
 			.from(schema.taskEvents)
 			.where(conditions.length > 0 ? and(...conditions) : undefined)
-			.orderBy(filters?.sort === 'oldest' ? asc(schema.taskEvents.createdAt) : desc(schema.taskEvents.createdAt));
+			.orderBy(
+				filters?.sort === 'oldest'
+					? asc(schema.taskEvents.createdAt)
+					: desc(schema.taskEvents.createdAt)
+			);
 
 		const taskIds = Array.from(new Set(events.map((e) => e.taskId)));
 		const actorIds = Array.from(new Set(events.map((e) => e.actorId)));
 
 		const [tasksList, actorsList] = await Promise.all([
-			taskIds.length > 0 ? this.drizzle.select().from(schema.tasks).where(inArray(schema.tasks.id, taskIds)) : [],
-			actorIds.length > 0 ? this.drizzle.select().from(schema.users).where(inArray(schema.users.id, actorIds)) : []
+			taskIds.length > 0
+				? this.drizzle.select().from(schema.tasks).where(inArray(schema.tasks.id, taskIds))
+				: [],
+			actorIds.length > 0
+				? this.drizzle.select().from(schema.users).where(inArray(schema.users.id, actorIds))
+				: []
 		]);
 
 		const taskMap = new Map<string, Task>();
@@ -564,7 +656,10 @@ export class PostgresStore {
 
 	// --- TASK WEEKS ---
 	async getTaskWeeks(): Promise<TaskWeek[]> {
-		return await this.drizzle.select().from(schema.taskWeeks).orderBy(desc(schema.taskWeeks.weekStart));
+		return await this.drizzle
+			.select()
+			.from(schema.taskWeeks)
+			.orderBy(desc(schema.taskWeeks.weekStart));
 	}
 
 	async getTaskWeekById(id: string): Promise<TaskWeek | null> {
@@ -792,7 +887,12 @@ export class PostgresStore {
 		const [existing] = await this.drizzle
 			.select()
 			.from(schema.memberAchievements)
-			.where(and(eq(schema.memberAchievements.userId, userId), eq(schema.memberAchievements.achievementId, achievementId)))
+			.where(
+				and(
+					eq(schema.memberAchievements.userId, userId),
+					eq(schema.memberAchievements.achievementId, achievementId)
+				)
+			)
 			.limit(1);
 		if (existing) {
 			return existing;
@@ -939,7 +1039,9 @@ export class PostgresStore {
 			.select()
 			.from(schema.messages)
 			.where(and(...conditions))
-			.orderBy(direction === 'before' ? desc(schema.messages.createdAt) : asc(schema.messages.createdAt))
+			.orderBy(
+				direction === 'before' ? desc(schema.messages.createdAt) : asc(schema.messages.createdAt)
+			)
 			.limit(limit + 1);
 
 		const hasMore = msgs.length > limit;
@@ -1026,7 +1128,12 @@ export class PostgresStore {
 		const [existing] = await this.drizzle
 			.select()
 			.from(schema.messageReadReceipts)
-			.where(and(eq(schema.messageReadReceipts.messageId, messageId), eq(schema.messageReadReceipts.userId, userId)))
+			.where(
+				and(
+					eq(schema.messageReadReceipts.messageId, messageId),
+					eq(schema.messageReadReceipts.userId, userId)
+				)
+			)
 			.limit(1);
 		if (existing) {
 			return existing;
@@ -1049,10 +1156,12 @@ export class PostgresStore {
 		const otherMsgs = await this.drizzle
 			.select({ id: schema.messages.id })
 			.from(schema.messages)
-			.where(and(
-				eq(schema.messages.conversationId, conversationId),
-				sql`${schema.messages.senderId} != ${userId}`
-			));
+			.where(
+				and(
+					eq(schema.messages.conversationId, conversationId),
+					sql`${schema.messages.senderId} != ${userId}`
+				)
+			);
 
 		let readCount = 0;
 		const now = new Date();
@@ -1060,7 +1169,12 @@ export class PostgresStore {
 			const [receipt] = await this.drizzle
 				.select({ id: schema.messageReadReceipts.id })
 				.from(schema.messageReadReceipts)
-				.where(and(eq(schema.messageReadReceipts.messageId, m.id), eq(schema.messageReadReceipts.userId, userId)))
+				.where(
+					and(
+						eq(schema.messageReadReceipts.messageId, m.id),
+						eq(schema.messageReadReceipts.userId, userId)
+					)
+				)
 				.limit(1);
 			if (!receipt) {
 				await this.drizzle.insert(schema.messageReadReceipts).values({
@@ -1079,11 +1193,13 @@ export class PostgresStore {
 		const otherMsgs = await this.drizzle
 			.select({ id: schema.messages.id })
 			.from(schema.messages)
-			.where(and(
-				eq(schema.messages.conversationId, conversationId),
-				sql`${schema.messages.senderId} != ${userId}`,
-				sql`${schema.messages.deletedAt} is null`
-			));
+			.where(
+				and(
+					eq(schema.messages.conversationId, conversationId),
+					sql`${schema.messages.senderId} != ${userId}`,
+					sql`${schema.messages.deletedAt} is null`
+				)
+			);
 		if (otherMsgs.length === 0) return 0;
 
 		let count = 0;
@@ -1091,7 +1207,12 @@ export class PostgresStore {
 			const [receipt] = await this.drizzle
 				.select({ id: schema.messageReadReceipts.id })
 				.from(schema.messageReadReceipts)
-				.where(and(eq(schema.messageReadReceipts.messageId, m.id), eq(schema.messageReadReceipts.userId, userId)))
+				.where(
+					and(
+						eq(schema.messageReadReceipts.messageId, m.id),
+						eq(schema.messageReadReceipts.userId, userId)
+					)
+				)
 				.limit(1);
 			if (!receipt) count++;
 		}
@@ -1112,14 +1233,18 @@ export class PostgresStore {
 
 		const conditions = [inArray(schema.messages.conversationId, allowedConvIds)];
 		if (params.query) {
-			conditions.push(sql`lower(${schema.messages.content}) LIKE ${'%' + params.query.toLowerCase() + '%'}`);
+			conditions.push(
+				sql`lower(${schema.messages.content}) LIKE ${'%' + params.query.toLowerCase() + '%'}`
+			);
 		}
 		if (params.senderId) {
 			conditions.push(eq(schema.messages.senderId, params.senderId));
 		}
 		if (params.participantId) {
 			const participantConvs = await this.getConversationsForUser(params.participantId);
-			const matchedConvIds = participantConvs.map((c) => c.id).filter((id) => allowedConvIds.includes(id));
+			const matchedConvIds = participantConvs
+				.map((c) => c.id)
+				.filter((id) => allowedConvIds.includes(id));
 			if (matchedConvIds.length === 0) return [];
 			conditions.push(inArray(schema.messages.conversationId, matchedConvIds));
 		}
@@ -1139,9 +1264,10 @@ export class PostgresStore {
 		const convMap = new Map<string, Conversation>();
 		for (const c of userConvs) convMap.set(c.id, c);
 		const senderIds = Array.from(new Set(msgs.map((m) => m.senderId)));
-		const senders = senderIds.length > 0
-			? await this.drizzle.select().from(schema.users).where(inArray(schema.users.id, senderIds))
-			: [];
+		const senders =
+			senderIds.length > 0
+				? await this.drizzle.select().from(schema.users).where(inArray(schema.users.id, senderIds))
+				: [];
 		const senderMap = new Map<string, User>();
 		for (const s of senders) senderMap.set(s.id, s);
 
@@ -1197,14 +1323,18 @@ export class PostgresStore {
 		await this.drizzle
 			.update(schema.notifications)
 			.set({ readAt: new Date() })
-			.where(and(eq(schema.notifications.userId, userId), sql`${schema.notifications.readAt} is null`));
+			.where(
+				and(eq(schema.notifications.userId, userId), sql`${schema.notifications.readAt} is null`)
+			);
 	}
 
 	async getUnreadNotificationCount(userId: string): Promise<number> {
 		const [res] = await this.drizzle
 			.select({ count: sql<number>`count(*)::int` })
 			.from(schema.notifications)
-			.where(and(eq(schema.notifications.userId, userId), sql`${schema.notifications.readAt} is null`));
+			.where(
+				and(eq(schema.notifications.userId, userId), sql`${schema.notifications.readAt} is null`)
+			);
 		return Number(res?.count || 0);
 	}
 

@@ -7,10 +7,12 @@ export const AuditActions = {
 	AUTH_LOGOUT: 'AUTH_LOGOUT',
 	USER_CREATE: 'USER_CREATE',
 	USER_UPDATE: 'USER_UPDATE',
+	USER_DELETE: 'USER_DELETE',
 	USER_ROLE_CHANGE: 'USER_ROLE_CHANGE',
 	USER_DEPARTMENT_CHANGE: 'USER_DEPARTMENT_CHANGE',
 	USER_STATUS_CHANGE: 'USER_STATUS_CHANGE',
 	USER_PASSWORD_RESET: 'USER_PASSWORD_RESET',
+	USER_PASSWORD_CHANGE: 'USER_PASSWORD_CHANGE',
 	TASK_CREATE: 'TASK_CREATE',
 	TASK_UPDATE: 'TASK_UPDATE',
 	TASK_STATUS_CHANGE: 'TASK_STATUS_CHANGE',
@@ -34,7 +36,15 @@ export type AuditActionType = (typeof AuditActions)[keyof typeof AuditActions];
 export async function logAudit(params: {
 	actorId?: string | null;
 	action: AuditActionType | string;
-	targetType: 'USER' | 'DEPARTMENT' | 'TASK' | 'DISTRIBUTION' | 'POINTS' | 'ACHIEVEMENT' | 'INTEGRATION' | 'SETTINGS';
+	targetType:
+		| 'USER'
+		| 'DEPARTMENT'
+		| 'TASK'
+		| 'DISTRIBUTION'
+		| 'POINTS'
+		| 'ACHIEVEMENT'
+		| 'INTEGRATION'
+		| 'SETTINGS';
 	targetId?: string | null;
 	metadata?: Record<string, unknown> | null;
 	ipHash?: string | null;

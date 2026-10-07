@@ -1,4 +1,5 @@
 import { hash, verify } from '@node-rs/argon2';
+import crypto from 'node:crypto';
 
 // Argon2id options conforming to OWASP recommendations
 const ARGON2_OPTIONS = {
@@ -49,3 +50,39 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
 	return { valid: true };
 }
 
+/**
+ * Generates a cryptographically secure temporary password conforming to password strength rules:
+ * at least 14 characters, containing uppercase, lowercase, numbers, and symbols.
+ */
+export function generateTemporaryPassword(): string {
+	const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+	const lower = 'abcdefghijkmnopqrstuvwxyz';
+	const digits = '23456789';
+	const special = '!@#$%&*';
+
+	const getRandom = (chars: string) => chars[crypto.randomInt(chars.length)];
+
+	const parts = [
+		getRandom(upper),
+		getRandom(upper),
+		getRandom(lower),
+		getRandom(lower),
+		getRandom(digits),
+		getRandom(digits),
+		getRandom(special),
+		getRandom(special)
+	];
+
+	const all = upper + lower + digits + special;
+	for (let i = 0; i < 6; i++) {
+		parts.push(getRandom(all));
+	}
+
+	// Shuffle with Fisher-Yates using cryptographically secure random integers
+	for (let i = parts.length - 1; i > 0; i--) {
+		const j = crypto.randomInt(i + 1);
+		[parts[i], parts[j]] = [parts[j], parts[i]];
+	}
+
+	return parts.join('');
+}

@@ -1,4 +1,12 @@
-import { pgTable, text, timestamp, integer, boolean, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	text,
+	timestamp,
+	integer,
+	boolean,
+	uniqueIndex,
+	index
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // --- DEPARTMENTS ---
@@ -24,7 +32,9 @@ export const users = pgTable(
 		username: text('username').notNull().unique(),
 		email: text('email').notNull().unique(),
 		passwordHash: text('password_hash').notNull(),
-		role: text('role', { enum: ['CEO', 'HEAD', 'MEMBER'] }).notNull().default('MEMBER'),
+		role: text('role', { enum: ['CEO', 'HEAD', 'MEMBER'] })
+			.notNull()
+			.default('MEMBER'),
 		departmentId: text('department_id').references(() => departments.id, { onDelete: 'set null' }),
 		avatarUrl: text('avatar_url'),
 		accountStatus: text('account_status', { enum: ['ACTIVE', 'SUSPENDED', 'INVITED'] })
@@ -32,7 +42,8 @@ export const users = pgTable(
 			.default('ACTIVE'),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-		lastLoginAt: timestamp('last_login_at', { withTimezone: true })
+		lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+		mustChangePassword: boolean('must_change_password').notNull().default(false)
 	},
 	(t) => [
 		index('users_email_idx').on(t.email),
@@ -82,7 +93,10 @@ export const memberDatabaseConnections = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 	},
-	(t) => [index('member_db_user_idx').on(t.userId), index('member_db_token_hash_idx').on(t.tokenHash)]
+	(t) => [
+		index('member_db_user_idx').on(t.userId),
+		index('member_db_token_hash_idx').on(t.tokenHash)
+	]
 );
 
 // --- TASK WEEKS (Weekly distribution cycles) ---
@@ -287,17 +301,14 @@ export const memberAchievements = pgTable(
 );
 
 // --- CONVERSATIONS ---
-export const conversations = pgTable(
-	'conversations',
-	{
-		id: text('id').primaryKey(),
-		conversationType: text('conversation_type', { enum: ['DIRECT', 'DEPARTMENT'] })
-			.notNull()
-			.default('DIRECT'),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
-	}
-);
+export const conversations = pgTable('conversations', {
+	id: text('id').primaryKey(),
+	conversationType: text('conversation_type', { enum: ['DIRECT', 'DEPARTMENT'] })
+		.notNull()
+		.default('DIRECT'),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
 
 // --- CONVERSATION PARTICIPANTS ---
 export const conversationParticipants = pgTable(
@@ -380,7 +391,10 @@ export const notifications = pgTable(
 		readAt: timestamp('read_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 	},
-	(t) => [index('notifications_user_idx').on(t.userId), index('notifications_read_idx').on(t.readAt)]
+	(t) => [
+		index('notifications_user_idx').on(t.userId),
+		index('notifications_read_idx').on(t.readAt)
+	]
 );
 
 // --- AUDIT LOGS (Immutable administrative trail) ---

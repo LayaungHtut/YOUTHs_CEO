@@ -2,13 +2,16 @@ import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { requireRole } from '$lib/server/auth/permissions';
-import { hashPassword } from '$lib/server/auth/password';
+import {
+	hashPassword,
+	generateTemporaryPassword,
+	validatePasswordStrength
+} from '$lib/server/auth/password';
 import { grantInitialPoints } from '$lib/server/services/pointsService';
 import { generateIntegrationToken } from '$lib/server/services/progressSyncService';
 import { logAudit, AuditActions } from '$lib/server/services/auditService';
 import { sendAccountCredentialsEmail } from '$lib/server/services/emailService';
 import { getSetting } from '$lib/server/services/settingsService';
-import crypto from 'node:crypto';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	requireRole(locals.user, 'CEO');
@@ -73,6 +76,23 @@ export const actions: Actions = {
 			return fail(400, { error: 'Full name, username, and email are required.' });
 		}
 
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(email)) {
+			return fail(400, { error: 'Please enter a valid email address.' });
+		}
+		if (deliveryEmail && !emailRegex.test(deliveryEmail)) {
+			return fail(400, { error: 'Please enter a valid delivery email address.' });
+		}
+
+		if (customPassword) {
+			const strength = validatePasswordStrength(customPassword);
+			if (!strength.valid) {
+				return fail(400, {
+					error: strength.message || 'Password does not meet security requirements.'
+				});
+			}
+		}
+
 		// Check duplicates
 		const existingEmail = await db.getUserByEmail(email);
 		if (existingEmail) return fail(400, { error: 'A member with this email already exists.' });
@@ -81,7 +101,7 @@ export const actions: Actions = {
 		if (existingUsername) return fail(400, { error: 'Username already taken.' });
 
 		// Generate secure temporary password if not provided
-		const tempPassword = customPassword || `YOUTHs!${crypto.randomBytes(4).toString('hex')}2026`;
+		const tempPassword = customPassword || generateTemporaryPassword();
 		const passwordHash = await hashPassword(tempPassword);
 
 		const created = await db.createUser({
@@ -91,7 +111,8 @@ export const actions: Actions = {
 			passwordHash,
 			role,
 			departmentId: departmentId || null,
-			accountStatus: 'ACTIVE'
+			accountStatus: 'ACTIVE',
+			mustChangePassword: true
 		});
 
 		// Grant initial starting points (100)
@@ -118,13 +139,13 @@ export const actions: Actions = {
 		const rawOrgName = orgSetting?.value || '';
 		const orgName = rawOrgName.split('(')[0]?.trim() || undefined;
 
-		// Dispatch credentials email (defaults to assigned email if deliveryEmail is not specified)
+		// Dispatch credentials email via Resend to the user's Gmail/delivery address
 		const recipientEmail = deliveryEmail || email;
 		const emailResult = await sendAccountCredentialsEmail({
 			to: recipientEmail,
 			fullName,
 			username,
-			email,
+			email: recipientEmail,
 			password: tempPassword,
 			role,
 			orgName
@@ -211,10 +232,10 @@ export const actions: Actions = {
 		const target = await db.getUserById(userId);
 		if (!target) return fail(404, { error: 'User not found' });
 
-		const newTempPassword = `Reset!${crypto.randomBytes(4).toString('hex')}2026`;
+		const newTempPassword = generateTemporaryPassword();
 		const passwordHash = await hashPassword(newTempPassword);
 
-		await db.updateUser(userId, { passwordHash });
+		await db.updateUser(userId, { passwordHash, mustChangePassword: true });
 
 		await logAudit({
 			actorId: locals.user!.id,
@@ -247,5 +268,61 @@ export const actions: Actions = {
 				emailError: emailResult.error
 			}
 		};
+	},
+
+	deleteMember: async ({ request, locals }) => {
+		requireRole(locals.user, 'CEO');
+
+		const data = await request.formData();
+		const userId = data.get('userId') as string;
+
+		if (!userId) {
+			return fail(400, { error: 'Member ID is required.' });
+		}
+
+		if (userId === locals.user!.id) {
+			return fail(400, { error: 'You cannot delete your own CEO account.' });
+		}
+
+		const target = await db.getUserById(userId);
+		if (!target) {
+			return fail(404, { error: 'Member not found.' });
+		}
+
+		if (target.role === 'CEO') {
+			return fail(400, { error: 'Cannot delete CEO accounts.' });
+		}
+
+		try {
+			await db.deleteUser(userId, locals.user!.id);
+
+			await logAudit({
+				actorId: locals.user!.id,
+				action: AuditActions.USER_DELETE,
+				targetType: 'USER',
+				targetId: userId,
+				metadata: {
+					deletedFullName: target.fullName,
+					deletedUsername: target.username,
+					deletedEmail: target.email,
+					role: target.role,
+					departmentId: target.departmentId
+				}
+			});
+
+			return {
+				success: true,
+				deletedMember: {
+					id: userId,
+					username: target.username,
+					fullName: target.fullName
+				}
+			};
+		} catch (err: any) {
+			console.error('[deleteMember] Error deleting member:', err);
+			return fail(500, {
+				error: err?.message || 'Failed to remove member account.'
+			});
+		}
 	}
 };

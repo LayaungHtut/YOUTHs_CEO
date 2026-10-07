@@ -38,6 +38,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Allow public auth endpoints and sync webhook
 	if (path === '/login' || path.startsWith('/api/sync/')) {
 		if (path === '/login' && event.locals.user) {
+			if (event.locals.user.mustChangePassword) {
+				throw redirect(303, '/change-password');
+			}
 			throw redirect(303, '/');
 		}
 		return resolve(event);
@@ -46,6 +49,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// For all other routes, require authenticated session
 	if (!event.locals.user) {
 		throw redirect(303, `/login?redirect=${encodeURIComponent(path)}`);
+	}
+
+	// Enforce temporary password change
+	if (event.locals.user.mustChangePassword) {
+		const isAllowed = path === '/change-password' || path === '/logout' || path.startsWith('/api/');
+		if (!isAllowed) {
+			throw redirect(303, '/change-password');
+		}
+	} else if (path === '/change-password') {
+		throw redirect(303, '/');
 	}
 
 	return resolve(event);
