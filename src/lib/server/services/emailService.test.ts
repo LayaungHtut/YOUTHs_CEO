@@ -84,6 +84,7 @@ describe('Email Service - Credentials Template, Gmail SMTP & Resend SDK', () => 
 				'Username: member_dev',
 				'Email: member@gmail.com',
 				'Temporary password: TemporaryPassword123!',
+				'Login page: https://youths-member.vercel.app/',
 				'',
 				'Please log in using these credentials and change your temporary password after logging in.',
 				'',
@@ -97,6 +98,7 @@ describe('Email Service - Credentials Template, Gmail SMTP & Resend SDK', () => 
 		expect(result.html).toContain('member_dev');
 		expect(result.html).toContain('member@gmail.com');
 		expect(result.html).toContain('TemporaryPassword123!');
+		expect(result.html).toContain('https://youths-member.vercel.app/');
 		expect(result.html).toContain(
 			'Please log in using these credentials and change your temporary password after logging in.'
 		);

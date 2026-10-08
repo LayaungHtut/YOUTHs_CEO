@@ -35,7 +35,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
 	logoUrl: '',
 	showLogo: false,
 	buttonText: 'Log in to {orgName}',
-	portalUrl: 'https://yout-hs-ceo.vercel.app'
+	portalUrl: 'https://youths-member.vercel.app/'
 };
 
 export interface CredentialsEmailParams {
@@ -87,7 +87,11 @@ export async function getSavedEmailTemplate(): Promise<EmailTemplateConfig> {
 	try {
 		const saved = await getSetting<Partial<EmailTemplateConfig>>('email.template');
 		if (saved && typeof saved === 'object') {
-			return { ...DEFAULT_EMAIL_TEMPLATE, ...saved };
+			const merged = { ...DEFAULT_EMAIL_TEMPLATE, ...saved };
+			if (!merged.portalUrl?.trim() || merged.portalUrl.includes('yout-hs-ceo')) {
+				merged.portalUrl = 'https://youths-member.vercel.app/';
+			}
+			return merged;
 		}
 	} catch {
 		// Ignore if database is not available
@@ -136,23 +140,13 @@ export function renderCredentialsEmail(
 	const accentColor = config.accentColor || '#6366f1';
 
 	const defaultLoginUrl = () => {
-		if (config.portalUrl?.trim()) {
-			return config.portalUrl.trim().replace(/\/$/, '') + '/login';
+		if (config.portalUrl?.trim() && !config.portalUrl.includes('yout-hs-ceo')) {
+			return config.portalUrl.trim();
 		}
-		if (process.env.APP_URL?.trim()) {
-			return process.env.APP_URL.trim().replace(/\/$/, '') + '/login';
+		if (process.env.MEMBER_PORTAL_URL?.trim()) {
+			return process.env.MEMBER_PORTAL_URL.trim();
 		}
-		if (process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()) {
-			return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.trim().replace(/\/$/, '')}/login`;
-		}
-		if (
-			process.env.ORIGIN &&
-			!process.env.ORIGIN.includes('localhost') &&
-			!process.env.ORIGIN.includes('127.0.0.1')
-		) {
-			return `${process.env.ORIGIN.replace(/\/$/, '')}/login`;
-		}
-		return 'https://yout-hs-ceo.vercel.app/login';
+		return 'https://youths-member.vercel.app/';
 	};
 
 	const loginUrl = params.loginUrl || defaultLoginUrl();
@@ -179,6 +173,7 @@ export function renderCredentialsEmail(
 		`Username: ${username}`,
 		`Email: ${email}`,
 		`Temporary password: ${temporaryPassword}`,
+		`Login page: ${loginUrl}`,
 		``,
 		instructions,
 		``,
@@ -240,10 +235,18 @@ export function renderCredentialsEmail(
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:0;">
+                  <td style="padding:0 0 16px 0;">
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Temporary password</div>
                     <div>
                       <code style="display:inline-block;background-color:#1e293b;border:1px solid #475569;padding:8px 14px;border-radius:8px;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,Courier,monospace;font-size:16px;font-weight:700;color:#fbbf24;letter-spacing:0.05em;">${escapedPassword}</code>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 0 0 0;border-top:1px solid #334155;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Login page</div>
+                    <div>
+                      <a href="${escapedLoginUrl}" target="_blank" rel="noopener noreferrer" style="font-size:14px;font-weight:600;color:#38bdf8;text-decoration:underline;word-break:break-all;">${escapedLoginUrl}</a>
                     </div>
                   </td>
                 </tr>

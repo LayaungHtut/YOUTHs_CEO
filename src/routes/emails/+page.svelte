@@ -33,7 +33,7 @@
 		'Please log in using these credentials and change your temporary password after logging in.'
 	);
 	let buttonText = $state('Log in to {orgName}');
-	let portalUrl = $state('');
+	let portalUrl = $state('https://youths-member.vercel.app/');
 	let footerNote = $state(
 		'This is an automated administrative notification. Please keep your temporary credentials secure.'
 	);
@@ -54,7 +54,7 @@
 				data.template.instructionsText ||
 				'Please log in using these credentials and change your temporary password after logging in.';
 			buttonText = data.template.buttonText || 'Log in to {orgName}';
-			portalUrl = data.template.portalUrl || '';
+			portalUrl = data.template.portalUrl || 'https://youths-member.vercel.app/';
 			footerNote =
 				data.template.footerNote ||
 				'This is an automated administrative notification. Please keep your temporary credentials secure.';
@@ -105,7 +105,7 @@
 		bodyText = 'Your account has been created.';
 		instructionsText = 'Please log in using these credentials and change your temporary password after logging in.';
 		buttonText = 'Log in to {orgName}';
-		portalUrl = '';
+		portalUrl = 'https://youths-member.vercel.app/';
 		footerNote = 'This is an automated administrative notification. Please keep your temporary credentials secure.';
 		accentColor = '#6366f1';
 		logoUrl = '';
@@ -347,12 +347,12 @@
 								type="url"
 								id="portalUrl"
 								name="portalUrl"
-								placeholder="https://yout-hs-ceo.vercel.app"
+								placeholder="https://youths-member.vercel.app/"
 								bind:value={portalUrl}
 								class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
 							/>
 							<p class="mt-1 text-[11px] text-slate-400">
-								Setting your public production domain (<span class="font-mono text-indigo-400">https://yout-hs-ceo.vercel.app</span>) ensures login buttons link directly to your live app and prevents spam filters from penalizing the email.
+								Setting the member portal domain (<span class="font-mono text-indigo-400">https://youths-member.vercel.app/</span>) directs new members straight to their login page and ensures email clients recognize legitimate login links.
 							</p>
 						</div>
 
@@ -501,6 +501,12 @@
 												</code>
 											</div>
 										</div>
+										<div class="border-t border-slate-800 pt-2.5">
+											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Login Page</div>
+											<div class="text-xs font-semibold text-sky-400 underline truncate">
+												{portalUrl || 'https://youths-member.vercel.app/'}
+											</div>
+										</div>
 									</div>
 
 									<p class="text-xs text-slate-300 leading-relaxed">
@@ -508,12 +514,15 @@
 									</p>
 
 									<div>
-										<div
+										<a
+											href={portalUrl || 'https://youths-member.vercel.app/'}
+											target="_blank"
+											rel="noopener noreferrer"
 											class="inline-block rounded-lg px-4 py-2 text-xs font-semibold text-white shadow"
 											style={`background-color: ${accentColor};`}
 										>
 											{renderedButton}
-										</div>
+										</a>
 									</div>
 
 									<div class="border-t border-slate-700/80 pt-4 text-xs text-slate-400">
