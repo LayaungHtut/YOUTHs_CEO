@@ -463,7 +463,7 @@
 								previewDevice === 'mobile' ? 'max-w-[340px]' : 'max-w-[500px]'
 							}`}
 						>
-							<div class="rounded-2xl border border-slate-800 bg-[#1e293b] text-slate-100 shadow-xl overflow-hidden">
+							<div class="rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-xl overflow-hidden">
 								<!-- Accent Top Line -->
 								<div class="h-1.5 w-full" style={`background-color: ${accentColor};`}></div>
 
@@ -474,42 +474,42 @@
 										</div>
 									{/if}
 
-									<h2 class="text-lg font-bold text-white leading-tight">
+									<h2 class="text-lg font-bold text-slate-900 leading-tight">
 										{renderedHeader}
 									</h2>
 
-									<div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+									<div class="text-xs text-slate-600 space-y-2 leading-relaxed">
 										<p>{greetingText}</p>
 										<p>{bodyText}</p>
 									</div>
 
 									<!-- Credentials Box -->
-									<div class="rounded-xl border border-slate-700 bg-slate-950 p-4 space-y-3">
+									<div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
 										<div>
-											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Username</div>
-											<div class="text-sm font-semibold text-white">alex_leader</div>
+											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Username</div>
+											<div class="text-sm font-semibold text-slate-900">alex_leader</div>
 										</div>
 										<div>
-											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</div>
-											<div class="text-sm font-semibold text-sky-400">alex@gmail.com</div>
+											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Email</div>
+											<div class="text-sm font-semibold text-slate-900">alex@gmail.com</div>
 										</div>
 										<div>
-											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Temporary Password</div>
+											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Temporary Password</div>
 											<div class="mt-1">
-												<code class="rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 font-mono text-sm font-bold text-amber-400 tracking-wider">
+												<code class="rounded-md border border-slate-300 bg-white px-2.5 py-1 font-mono text-sm font-bold text-slate-900 tracking-wider">
 													Alex#2026Secure
 												</code>
 											</div>
 										</div>
-										<div class="border-t border-slate-800 pt-2.5">
-											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Login Page</div>
-											<div class="text-xs font-semibold text-sky-400 underline truncate">
+										<div class="border-t border-slate-200 pt-2.5">
+											<div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Login Page</div>
+											<div class="text-xs font-semibold text-blue-600 underline truncate">
 												{portalUrl || 'https://youths-member.vercel.app/'}
 											</div>
 										</div>
 									</div>
 
-									<p class="text-xs text-slate-300 leading-relaxed">
+									<p class="text-xs text-slate-600 leading-relaxed">
 										{instructionsText}
 									</p>
 
@@ -525,14 +525,14 @@
 										</a>
 									</div>
 
-									<div class="border-t border-slate-700/80 pt-4 text-xs text-slate-400">
+									<div class="border-t border-slate-200 pt-4 text-xs text-slate-500">
 										<p>Regards,</p>
-										<p class="font-bold text-white">{data.orgName}</p>
+										<p class="font-bold text-slate-900">{data.orgName}</p>
 									</div>
 								</div>
 
 								<!-- Footer Disclaimer -->
-								<div class="border-t border-slate-800 bg-[#0f172a] px-6 py-3 text-center text-[10px] text-slate-400">
+								<div class="border-t border-slate-200 bg-slate-50 px-6 py-3 text-center text-[10px] text-slate-500">
 									{footerNote}
 								</div>
 							</div>

@@ -193,83 +193,77 @@ export function renderCredentialsEmail(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;-webkit-font-smoothing:antialiased;">
-  <!-- Anti-spam hidden preview snippet -->
-  <div style="display:none;font-size:1px;color:#333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-    Official account credentials and onboarding instructions for ${escapedOrg}.
-  </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
           <tr>
-            <td style="height:6px;background:${escapedAccent};"></td>
+            <td style="height:5px;background:${escapedAccent};"></td>
           </tr>
           <tr>
-            <td style="padding:36px 36px 28px 36px;">
+            <td style="padding:32px 32px 24px 32px;">
               ${logoHtml}
-              <h1 style="margin:0 0 16px 0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.35;">
+              <h1 style="margin:0 0 16px 0;font-size:20px;font-weight:700;color:#0f172a;line-height:1.35;">
                 ${escapedHeaderTitle}
               </h1>
 
-              <p style="margin:0 0 8px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
+              <p style="margin:0 0 8px 0;font-size:15px;color:#334155;line-height:1.6;">
                 ${escapedGreeting}
               </p>
-              <p style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
+              <p style="margin:0 0 20px 0;font-size:15px;color:#334155;line-height:1.6;">
                 ${escapedBodyText}
               </p>
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin-bottom:20px;">
                 <tr>
-                  <td style="padding:0 0 16px 0;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Username</div>
-                    <div style="font-size:15px;font-weight:600;color:#ffffff;">${escapedUsername}</div>
+                  <td style="padding:0 0 14px 0;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:4px;">Username</div>
+                    <div style="font-size:15px;font-weight:600;color:#0f172a;">${escapedUsername}</div>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:0 0 16px 0;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Email</div>
-                    <div style="font-size:15px;font-weight:600;color:#60a5fa;">
-                      <a href="mailto:${escapedEmail}" style="color:#60a5fa;text-decoration:none;">${escapedEmail}</a>
+                  <td style="padding:0 0 14px 0;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:4px;">Email</div>
+                    <div style="font-size:15px;font-weight:600;color:#0f172a;">${escapedEmail}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 14px 0;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:4px;">Temporary password</div>
+                    <div>
+                      <code style="display:inline-block;background-color:#ffffff;border:1px solid #cbd5e1;padding:6px 12px;border-radius:6px;font-family:'SFMono-Regular',Consolas,Menlo,monospace;font-size:15px;font-weight:700;color:#0f172a;letter-spacing:0.04em;">${escapedPassword}</code>
                     </div>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:0 0 16px 0;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Temporary password</div>
+                  <td style="padding:14px 0 0 0;border-top:1px solid #e2e8f0;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:4px;">Login page</div>
                     <div>
-                      <code style="display:inline-block;background-color:#1e293b;border:1px solid #475569;padding:8px 14px;border-radius:8px;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,Courier,monospace;font-size:16px;font-weight:700;color:#fbbf24;letter-spacing:0.05em;">${escapedPassword}</code>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:16px 0 0 0;border-top:1px solid #334155;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:6px;">Login page</div>
-                    <div>
-                      <a href="${escapedLoginUrl}" target="_blank" rel="noopener noreferrer" style="font-size:14px;font-weight:600;color:#38bdf8;text-decoration:underline;word-break:break-all;">${escapedLoginUrl}</a>
+                      <a href="${escapedLoginUrl}" style="font-size:14px;font-weight:600;color:#2563eb;text-decoration:underline;">${escapedLoginUrl}</a>
                     </div>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0 0 24px 0;font-size:14px;color:#cbd5e1;line-height:1.6;">
+              <p style="margin:0 0 20px 0;font-size:14px;color:#475569;line-height:1.6;">
                 ${escapedInstructions}
               </p>
 
-              <div style="margin-bottom:28px;">
-                <a href="${escapedLoginUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:${escapedAccent};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 20px;border-radius:8px;">
+              <div style="margin-bottom:24px;">
+                <a href="${escapedLoginUrl}" style="display:inline-block;background-color:${escapedAccent};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:8px;">
                   ${escapedButtonText}
                 </a>
               </div>
 
-              <div style="border-top:1px solid #334155;padding-top:20px;font-size:14px;color:#94a3b8;line-height:1.6;">
+              <div style="border-top:1px solid #e2e8f0;padding-top:18px;font-size:14px;color:#64748b;line-height:1.6;">
                 <p style="margin:0 0 4px 0;">Regards,</p>
-                <p style="margin:0;font-weight:700;color:#ffffff;">${escapedOrg}</p>
+                <p style="margin:0;font-weight:700;color:#0f172a;">${escapedOrg}</p>
               </div>
             </td>
           </tr>
           <tr>
-            <td style="background-color:#0f172a;padding:16px 36px;border-top:1px solid #334155;font-size:11px;color:#64748b;text-align:center;">
+            <td style="background-color:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b;text-align:center;line-height:1.5;">
               ${escapedFooterNote}
             </td>
           </tr>
@@ -336,39 +330,39 @@ export function renderBroadcastEmail(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapedSubject}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
           <tr>
-            <td style="height:6px;background:${accentColor};"></td>
+            <td style="height:5px;background:${accentColor};"></td>
           </tr>
           <tr>
-            <td style="padding:36px 36px 28px 36px;">
+            <td style="padding:32px 32px 24px 32px;">
               ${logoHtml}
-              <h1 style="margin:0 0 16px 0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.35;">
+              <h1 style="margin:0 0 16px 0;font-size:20px;font-weight:700;color:#0f172a;line-height:1.35;">
                 ${escapedTitle}
               </h1>
 
-              <p style="margin:0 0 16px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
+              <p style="margin:0 0 16px 0;font-size:15px;color:#334155;line-height:1.6;">
                 ${escapedGreeting}${recipientDisplay ? ' ' + recipientDisplay : ''},
               </p>
 
-              <div style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.7;">
+              <div style="margin:0 0 24px 0;font-size:15px;color:#334155;line-height:1.7;">
                 ${escapedMessage}
               </div>
 
               ${buttonHtml}
 
-              <div style="border-top:1px solid #334155;padding-top:20px;font-size:14px;color:#94a3b8;line-height:1.6;">
+              <div style="border-top:1px solid #e2e8f0;padding-top:18px;font-size:14px;color:#64748b;line-height:1.6;">
                 <p style="margin:0 0 4px 0;">Regards,</p>
-                <p style="margin:0;font-weight:700;color:#ffffff;">${escapedOrg}</p>
+                <p style="margin:0;font-weight:700;color:#0f172a;">${escapedOrg}</p>
               </div>
             </td>
           </tr>
           <tr>
-            <td style="background-color:#0f172a;padding:16px 36px;border-top:1px solid #334155;font-size:11px;color:#64748b;text-align:center;">
+            <td style="background-color:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b;text-align:center;line-height:1.5;">
               ${escapeHtml(config.footerNote || 'YOUTHs Official Communication')}
             </td>
           </tr>
@@ -420,11 +414,7 @@ export async function sendEmail(params: {
 				replyTo: smtpUser,
 				subject: params.subject,
 				html: params.html,
-				text: params.text,
-				headers: {
-					'X-Priority': '3',
-					'X-Mailer': 'YOUTHs Communication Center'
-				}
+				text: params.text
 			});
 		};
 
@@ -466,11 +456,7 @@ export async function sendEmail(params: {
 				replyTo: replyToEmail || undefined,
 				subject: params.subject,
 				html: params.html,
-				text: params.text,
-				headers: {
-					'X-Priority': '3',
-					'X-Mailer': 'YOUTHs Communication Center'
-				}
+				text: params.text
 			});
 
 			if (error) {
