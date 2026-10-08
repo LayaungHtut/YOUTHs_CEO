@@ -209,4 +209,45 @@ describe('Email Service - Credentials Template, Gmail SMTP & Resend SDK', () => 
 		expect(result.sent).toBe(false);
 		expect(result.error).toContain('Invalid login');
 	});
+
+	it('renders custom email template with custom colors, titles and branding', () => {
+		const customConfig = {
+			subjectTemplate: 'Welcome {username} to {orgName} Hub',
+			headerTitle: 'Official Onboarding - {orgName}',
+			greetingText: 'Dear Executive Leader,',
+			bodyText: 'We are delighted to welcome you aboard.',
+			instructionsText: 'First login requires password rotation.',
+			footerNote: 'Confidential corporate notice.',
+			accentColor: '#10b981',
+			logoUrl: 'https://example.com/brand-logo.png',
+			showLogo: true,
+			buttonText: 'Access {orgName} Portal',
+			portalUrl: 'https://app.youths.org'
+		};
+
+		const { subject, html, text } = renderCredentialsEmail(
+			{
+				to: 'director@youths.org',
+				email: 'director@youths.org',
+				username: 'director',
+				password: 'SuperSecret123!',
+				orgName: 'YOUTHs'
+			},
+			customConfig
+		);
+
+		expect(subject).toBe('Welcome director to YOUTHs Hub');
+		expect(html).toContain('Official Onboarding - YOUTHs');
+		expect(html).toContain('Dear Executive Leader,');
+		expect(html).toContain('We are delighted to welcome you aboard.');
+		expect(html).toContain('First login requires password rotation.');
+		expect(html).toContain('#10b981');
+		expect(html).toContain('https://example.com/brand-logo.png');
+		expect(html).toContain('Access YOUTHs Portal');
+		expect(html).toContain('Confidential corporate notice.');
+
+		expect(text).toContain('Dear Executive Leader,');
+		expect(text).toContain('SuperSecret123!');
+	});
 });
+

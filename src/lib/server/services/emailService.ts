@@ -1,11 +1,42 @@
 import '../env';
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
+import { getSetting } from './settingsService';
 
 export interface SendResult {
 	sent: boolean;
 	error?: string;
 }
+
+export interface EmailTemplateConfig {
+	subjectTemplate: string;
+	headerTitle: string;
+	greetingText: string;
+	bodyText: string;
+	instructionsText: string;
+	footerNote: string;
+	accentColor: string;
+	logoUrl: string;
+	showLogo: boolean;
+	buttonText: string;
+	portalUrl: string;
+}
+
+export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
+	subjectTemplate: 'Your {orgName} account has been created',
+	headerTitle: 'Your {orgName} account has been created',
+	greetingText: 'Hello,',
+	bodyText: 'Your account has been created.',
+	instructionsText:
+		'Please log in using these credentials and change your temporary password after logging in.',
+	footerNote:
+		'This is an automated administrative notification. Please keep your temporary credentials secure.',
+	accentColor: '#6366f1',
+	logoUrl: '',
+	showLogo: false,
+	buttonText: 'Log in to {orgName}',
+	portalUrl: 'https://yout-hs-ceo.vercel.app'
+};
 
 export interface CredentialsEmailParams {
 	to: string;
@@ -17,6 +48,7 @@ export interface CredentialsEmailParams {
 	orgName?: string;
 	loginUrl?: string;
 	subject?: string;
+	templateConfig?: EmailTemplateConfig;
 }
 
 function escapeHtml(value: string): string {
@@ -49,61 +81,115 @@ export function resolveOrgName(customOrgName?: string): string {
 }
 
 /**
- * Builds the HTML and plain-text email content matching the required template:
- *
- * Subject:
- * Your YOUTHs account has been created
- *
- * Body:
- * Hello,
- *
- * Your account has been created.
- *
- * Username: {username}
- * Email: {gmail}
- * Temporary password: {temporaryPassword}
- *
- * Please log in using these credentials and change your temporary password after logging in.
- *
- * Regards,
- * YOUTHs
+ * Retrieves the saved email template configuration from settings, or returns defaults.
  */
-export function renderCredentialsEmail(params: CredentialsEmailParams): {
+export async function getSavedEmailTemplate(): Promise<EmailTemplateConfig> {
+	try {
+		const saved = await getSetting<Partial<EmailTemplateConfig>>('email.template');
+		if (saved && typeof saved === 'object') {
+			return { ...DEFAULT_EMAIL_TEMPLATE, ...saved };
+		}
+	} catch {
+		// Ignore if database is not available
+	}
+	return DEFAULT_EMAIL_TEMPLATE;
+}
+
+/**
+ * Builds the HTML and plain-text email content matching the required credentials template,
+ * applying custom template customization (accent color, header, greeting, footer).
+ */
+export function renderCredentialsEmail(
+	params: CredentialsEmailParams,
+	customConfig?: EmailTemplateConfig
+): {
 	subject: string;
 	html: string;
 	text: string;
 } {
+	const config = customConfig || params.templateConfig || DEFAULT_EMAIL_TEMPLATE;
 	const orgName = resolveOrgName(params.orgName);
-	const subject = params.subject || `Your ${orgName} account has been created`;
 	const username = params.username || params.email.split('@')[0];
 	const email = params.email;
 	const temporaryPassword = params.password;
-	const loginUrl =
-		params.loginUrl ||
-		(process.env.ORIGIN
-			? `${process.env.ORIGIN.replace(/\/$/, '')}/login`
-			: 'https://mail.google.com');
+
+	const subject = (params.subject || config.subjectTemplate || 'Your {orgName} account has been created')
+		.replace(/\{orgName\}/g, orgName)
+		.replace(/\{username\}/g, username);
+
+	const headerTitle = (config.headerTitle || 'Your {orgName} account has been created')
+		.replace(/\{orgName\}/g, orgName)
+		.replace(/\{username\}/g, username);
+
+	const buttonText = (config.buttonText || 'Log in to {orgName}')
+		.replace(/\{orgName\}/g, orgName)
+		.replace(/\{username\}/g, username);
+
+	const greeting = config.greetingText || 'Hello,';
+	const bodyText = config.bodyText || 'Your account has been created.';
+	const instructions =
+		config.instructionsText ||
+		'Please log in using these credentials and change your temporary password after logging in.';
+	const footerNote =
+		config.footerNote ||
+		'This is an automated administrative notification. Please keep your temporary credentials secure.';
+	const accentColor = config.accentColor || '#6366f1';
+
+	const defaultLoginUrl = () => {
+		if (config.portalUrl?.trim()) {
+			return config.portalUrl.trim().replace(/\/$/, '') + '/login';
+		}
+		if (process.env.APP_URL?.trim()) {
+			return process.env.APP_URL.trim().replace(/\/$/, '') + '/login';
+		}
+		if (process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()) {
+			return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.trim().replace(/\/$/, '')}/login`;
+		}
+		if (
+			process.env.ORIGIN &&
+			!process.env.ORIGIN.includes('localhost') &&
+			!process.env.ORIGIN.includes('127.0.0.1')
+		) {
+			return `${process.env.ORIGIN.replace(/\/$/, '')}/login`;
+		}
+		return 'https://yout-hs-ceo.vercel.app/login';
+	};
+
+	const loginUrl = params.loginUrl || defaultLoginUrl();
 
 	const escapedOrg = escapeHtml(orgName);
 	const escapedUsername = escapeHtml(username);
 	const escapedEmail = escapeHtml(email);
 	const escapedPassword = escapeHtml(temporaryPassword);
 	const escapedLoginUrl = escapeHtml(loginUrl);
+	const escapedHeaderTitle = escapeHtml(headerTitle);
+	const escapedGreeting = escapeHtml(greeting);
+	const escapedBodyText = escapeHtml(bodyText);
+	const escapedInstructions = escapeHtml(instructions);
+	const escapedButtonText = escapeHtml(buttonText);
+	const escapedFooterNote = escapeHtml(footerNote);
+	const escapedAccent = escapeHtml(accentColor);
+	const escapedLogoUrl = config.logoUrl ? escapeHtml(config.logoUrl) : '';
 
 	const text = [
-		`Hello,`,
+		greeting,
 		``,
-		`Your account has been created.`,
+		bodyText,
 		``,
 		`Username: ${username}`,
 		`Email: ${email}`,
 		`Temporary password: ${temporaryPassword}`,
 		``,
-		`Please log in using these credentials and change your temporary password after logging in.`,
+		instructions,
 		``,
 		`Regards,`,
 		`${orgName}`
 	].join('\n');
+
+	const logoHtml =
+		config.showLogo && escapedLogoUrl
+			? `<div style="text-align:center;margin-bottom:20px;"><img src="${escapedLogoUrl}" alt="${escapedOrg}" style="max-height:48px;max-width:200px;border-radius:8px;" /></div>`
+			: '';
 
 	const html = `<!DOCTYPE html>
 <html lang="en">
@@ -113,24 +199,29 @@ export function renderCredentialsEmail(params: CredentialsEmailParams): {
   <title>${escapeHtml(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;-webkit-font-smoothing:antialiased;">
+  <!-- Anti-spam hidden preview snippet -->
+  <div style="display:none;font-size:1px;color:#333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Official account credentials and onboarding instructions for ${escapedOrg}.
+  </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 16px;">
     <tr>
       <td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);">
           <tr>
-            <td style="height:6px;background:linear-gradient(90deg,#4f46e5,#7c3aed,#2563eb);"></td>
+            <td style="height:6px;background:${escapedAccent};"></td>
           </tr>
           <tr>
             <td style="padding:36px 36px 28px 36px;">
+              ${logoHtml}
               <h1 style="margin:0 0 16px 0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.35;">
-                Your ${escapedOrg} account has been created
+                ${escapedHeaderTitle}
               </h1>
 
               <p style="margin:0 0 8px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
-                Hello,
+                ${escapedGreeting}
               </p>
               <p style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
-                Your account has been created.
+                ${escapedBodyText}
               </p>
 
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:24px;">
@@ -159,12 +250,12 @@ export function renderCredentialsEmail(params: CredentialsEmailParams): {
               </table>
 
               <p style="margin:0 0 24px 0;font-size:14px;color:#cbd5e1;line-height:1.6;">
-                Please log in using these credentials and change your temporary password after logging in.
+                ${escapedInstructions}
               </p>
 
               <div style="margin-bottom:28px;">
-                <a href="${escapedLoginUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4f46e5;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 20px;border-radius:8px;">
-                  Log in to ${escapedOrg}
+                <a href="${escapedLoginUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:${escapedAccent};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 20px;border-radius:8px;">
+                  ${escapedButtonText}
                 </a>
               </div>
 
@@ -176,7 +267,7 @@ export function renderCredentialsEmail(params: CredentialsEmailParams): {
           </tr>
           <tr>
             <td style="background-color:#0f172a;padding:16px 36px;border-top:1px solid #334155;font-size:11px;color:#64748b;text-align:center;">
-              This is an automated administrative notification. Please keep your temporary credentials secure.
+              ${escapedFooterNote}
             </td>
           </tr>
         </table>
@@ -187,6 +278,105 @@ export function renderCredentialsEmail(params: CredentialsEmailParams): {
 </html>`;
 
 	return { subject, html, text };
+}
+
+/**
+ * Builds custom HTML and text for general member communications and announcements.
+ */
+export function renderBroadcastEmail(params: {
+	to: string;
+	subject: string;
+	title?: string;
+	message: string;
+	recipientName?: string;
+	orgName?: string;
+	actionUrl?: string;
+	actionText?: string;
+	templateConfig?: EmailTemplateConfig;
+}): { subject: string; html: string; text: string } {
+	const config = params.templateConfig || DEFAULT_EMAIL_TEMPLATE;
+	const orgName = resolveOrgName(params.orgName);
+	const escapedOrg = escapeHtml(orgName);
+	const escapedTitle = escapeHtml(params.title || params.subject);
+	const escapedSubject = escapeHtml(params.subject);
+	const escapedMessage = escapeHtml(params.message).replace(/\n/g, '<br/>');
+	const escapedGreeting = escapeHtml(config.greetingText || 'Hello');
+	const recipientDisplay = params.recipientName ? escapeHtml(params.recipientName) : '';
+	const accentColor = escapeHtml(config.accentColor || '#6366f1');
+	const logoHtml =
+		config.showLogo && config.logoUrl
+			? `<div style="text-align:center;margin-bottom:20px;"><img src="${escapeHtml(config.logoUrl)}" alt="${escapedOrg}" style="max-height:48px;max-width:200px;border-radius:8px;" /></div>`
+			: '';
+
+	const buttonHtml =
+		params.actionUrl && params.actionText
+			? `<div style="margin:24px 0;"><a href="${escapeHtml(params.actionUrl)}" style="display:inline-block;background-color:${accentColor};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 20px;border-radius:8px;">${escapeHtml(params.actionText)}</a></div>`
+			: '';
+
+	const text = [
+		recipientDisplay ? `${config.greetingText} ${recipientDisplay},` : `${config.greetingText},`,
+		``,
+		params.message,
+		``,
+		params.actionUrl ? `${params.actionText || 'Link'}: ${params.actionUrl}` : '',
+		``,
+		`Regards,`,
+		`${orgName}`
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapedSubject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);">
+          <tr>
+            <td style="height:6px;background:${accentColor};"></td>
+          </tr>
+          <tr>
+            <td style="padding:36px 36px 28px 36px;">
+              ${logoHtml}
+              <h1 style="margin:0 0 16px 0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.35;">
+                ${escapedTitle}
+              </h1>
+
+              <p style="margin:0 0 16px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
+                ${escapedGreeting}${recipientDisplay ? ' ' + recipientDisplay : ''},
+              </p>
+
+              <div style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.7;">
+                ${escapedMessage}
+              </div>
+
+              ${buttonHtml}
+
+              <div style="border-top:1px solid #334155;padding-top:20px;font-size:14px;color:#94a3b8;line-height:1.6;">
+                <p style="margin:0 0 4px 0;">Regards,</p>
+                <p style="margin:0;font-weight:700;color:#ffffff;">${escapedOrg}</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#0f172a;padding:16px 36px;border-top:1px solid #334155;font-size:11px;color:#64748b;text-align:center;">
+              ${escapeHtml(config.footerNote || 'YOUTHs Official Communication')}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+	return { subject: params.subject, html, text };
 }
 
 /**
@@ -202,37 +392,60 @@ export async function sendEmail(params: {
 	const recipient = process.env.RESEND_TEST_OVERRIDE_EMAIL?.trim() || params.to;
 
 	// 1. Gmail SMTP (Nodemailer) — Sends directly from your personal Gmail to ANY recipient without requiring a custom domain
-	const smtpUser = (process.env.SMTP_USER || process.env.GMAIL_USER)?.trim();
-	const smtpPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)?.trim();
+	const rawUser = (process.env.SMTP_USER || process.env.GMAIL_USER)?.trim();
+	const rawPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)?.trim();
 
-	if (smtpUser && smtpPass) {
-		const cleanedPass = smtpPass.replace(/\s+/g, '');
-		const from = process.env.SMTP_FROM?.trim() || `YOUTHs <${smtpUser}>`;
+	if (rawUser && rawPass) {
+		const smtpUser = rawUser.replace(/^["']|["']$/g, '').trim();
+		const cleanedPass = rawPass.replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+		const rawFrom = process.env.SMTP_FROM?.trim();
+		const from = rawFrom ? rawFrom.replace(/^["']|["']$/g, '').trim() : `YOUTHs <${smtpUser}>`;
 
-		try {
+		const sendWithPort = async (p: number, s: boolean) => {
 			const transporter = nodemailer.createTransport({
-				host: 'smtp.gmail.com',
-				port: 465,
-				secure: true,
+				host: process.env.SMTP_HOST?.trim() || 'smtp.gmail.com',
+				port: p,
+				secure: s,
 				auth: {
 					user: smtpUser,
 					pass: cleanedPass
 				}
 			});
-
 			await transporter.sendMail({
 				from,
 				to: recipient,
+				replyTo: smtpUser,
 				subject: params.subject,
 				html: params.html,
-				text: params.text
+				text: params.text,
+				headers: {
+					'X-Priority': '3',
+					'X-Mailer': 'YOUTHs Communication Center'
+				}
 			});
+		};
 
-			return { sent: true };
+		try {
+			// Try port 587 first (STARTTLS, standard port that bypasses ISP port 465 blocks)
+			try {
+				await sendWithPort(587, false);
+				return { sent: true };
+			} catch (firstErr: any) {
+				// If port 587 has a connection network issue, fallback to port 465
+				if (firstErr?.code === 'ECONNREFUSED' || firstErr?.code === 'ETIMEDOUT') {
+					await sendWithPort(465, true);
+					return { sent: true };
+				}
+				throw firstErr;
+			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			console.error('[email] Failed to send via Gmail SMTP:', message);
-			return { sent: false, error: message };
+			const isBadCredentials = message.includes('535') || message.includes('BadCredentials');
+			const friendlyError = isBadCredentials
+				? 'Invalid login (535 BadCredentials): Google rejected your Gmail credentials. Please ensure 2-Step Verification is enabled on your Google account and you are using a 16-character Google App Password (not your regular Gmail password).'
+				: message;
+			return { sent: false, error: friendlyError };
 		}
 	}
 
@@ -243,12 +456,18 @@ export async function sendEmail(params: {
 	if (apiKey) {
 		try {
 			const resend = new Resend(apiKey);
+			const replyToEmail = (process.env.SMTP_USER || process.env.GMAIL_USER)?.trim()?.replace(/^["']|["']$/g, '');
 			const { error } = await resend.emails.send({
 				from,
 				to: [recipient],
+				replyTo: replyToEmail || undefined,
 				subject: params.subject,
 				html: params.html,
-				text: params.text
+				text: params.text,
+				headers: {
+					'X-Priority': '3',
+					'X-Mailer': 'YOUTHs Communication Center'
+				}
 			});
 
 			if (error) {
@@ -266,7 +485,8 @@ export async function sendEmail(params: {
 
 	return {
 		sent: false,
-		error: 'No email service configured. RESEND_API_KEY is not configured and SMTP credentials (SMTP_USER/SMTP_PASS) are missing.'
+		error:
+			'No email service configured. RESEND_API_KEY is not configured and SMTP credentials (SMTP_USER/SMTP_PASS) are missing.'
 	};
 }
 
@@ -276,7 +496,8 @@ export async function sendEmail(params: {
 export async function sendAccountCredentialsEmail(
 	params: CredentialsEmailParams
 ): Promise<SendResult> {
-	const { subject, html, text } = renderCredentialsEmail(params);
+	const templateConfig = await getSavedEmailTemplate();
+	const { subject, html, text } = renderCredentialsEmail(params, templateConfig);
 
 	return sendEmail({
 		to: params.to,
@@ -284,4 +505,116 @@ export async function sendAccountCredentialsEmail(
 		html,
 		text
 	});
+}
+
+/**
+ * Sends a custom broadcast email announcement to a recipient.
+ */
+export async function sendBroadcastEmail(params: {
+	to: string;
+	subject: string;
+	title?: string;
+	message: string;
+	recipientName?: string;
+	orgName?: string;
+	actionUrl?: string;
+	actionText?: string;
+}): Promise<SendResult> {
+	const templateConfig = await getSavedEmailTemplate();
+	const { subject, html, text } = renderBroadcastEmail({
+		...params,
+		templateConfig
+	});
+
+	return sendEmail({
+		to: params.to,
+		subject,
+		html,
+		text
+	});
+}
+
+/**
+ * Dispatches a test verification email to confirm email delivery is working.
+ */
+export async function sendTestEmail(
+	to: string,
+	customConfig?: EmailTemplateConfig
+): Promise<SendResult> {
+	const config = customConfig || (await getSavedEmailTemplate());
+	const orgName = resolveOrgName();
+	const { subject, html, text } = renderCredentialsEmail(
+		{
+			to,
+			email: to,
+			password: 'DemoPassword123!',
+			username: 'demo_user',
+			orgName,
+			subject: `[Test] Email Verification - ${orgName}`
+		},
+		config
+	);
+
+	return sendEmail({
+		to,
+		subject,
+		html,
+		text
+	});
+}
+
+/**
+ * Returns current email provider diagnostics and configuration state.
+ */
+export function getEmailProviderStatus(): {
+	configured: boolean;
+	provider: 'GMAIL_SMTP' | 'RESEND' | 'NONE';
+	fromAddress: string;
+	userAddress: string | null;
+	resendConfigured: boolean;
+	smtpConfigured: boolean;
+} {
+	const rawUser = (process.env.SMTP_USER || process.env.GMAIL_USER)?.trim();
+	const rawPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)?.trim();
+	const apiKey = process.env.RESEND_API_KEY?.trim();
+
+	const smtpConfigured = Boolean(rawUser && rawPass);
+	const resendConfigured = Boolean(apiKey);
+
+	if (smtpConfigured) {
+		const cleanUser = rawUser!.replace(/^["']|["']$/g, '').trim();
+		const from =
+			process.env.SMTP_FROM?.trim().replace(/^["']|["']$/g, '') || `YOUTHs <${cleanUser}>`;
+		return {
+			configured: true,
+			provider: 'GMAIL_SMTP',
+			fromAddress: from,
+			userAddress: cleanUser,
+			smtpConfigured: true,
+			resendConfigured
+		};
+	}
+
+	if (resendConfigured) {
+		const from =
+			process.env.RESEND_FROM_EMAIL?.trim().replace(/^["']|["']$/g, '') ||
+			'YOUTHs <onboarding@resend.dev>';
+		return {
+			configured: true,
+			provider: 'RESEND',
+			fromAddress: from,
+			userAddress: null,
+			smtpConfigured: false,
+			resendConfigured: true
+		};
+	}
+
+	return {
+		configured: false,
+		provider: 'NONE',
+		fromAddress: 'Not configured',
+		userAddress: null,
+		smtpConfigured: false,
+		resendConfigured: false
+	};
 }

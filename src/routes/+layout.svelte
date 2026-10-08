@@ -18,7 +18,8 @@
 		Menu,
 		X,
 		Search,
-		Shield
+		Shield,
+		Mail
 	} from '@lucide/svelte';
 
 	let { data, children } = $props();
@@ -40,6 +41,7 @@
 		{ name: 'AI Weekly Distribution', href: '/tasks/distribution', icon: Sparkles, badge: 'AI' },
 		{ name: 'Progress & Analytics', href: '/progress', icon: BarChart3 },
 		{ name: 'Messages', href: '/messages', icon: MessageSquare },
+		{ name: 'Email Center', href: '/emails', icon: Mail },
 		{ name: 'Achievements', href: '/achievements', icon: Award },
 		{ name: 'Integrations', href: '/integrations', icon: Database },
 		{ name: 'Audit Logs', href: '/audit-logs', icon: ShieldCheck },
