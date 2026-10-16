@@ -10,8 +10,6 @@
 		Database,
 		MessageSquare,
 		ExternalLink,
-		Calendar,
-		ArrowRight
 	} from '@lucide/svelte';
 
 	let { data } = $props();
@@ -31,6 +29,7 @@
 	});
 
 	function applyFilters() {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local value, only used to build the URL
 		const params = new URLSearchParams();
 		if (selectedDept) params.set('departmentId', selectedDept);
 		if (selectedType) params.set('activityType', selectedType);
@@ -155,7 +154,7 @@
 					class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
 				>
 					<option value="">All Departments</option>
-					{#each data.departments as d}
+					{#each data.departments as d (d.id)}
 						<option value={d.id}>{d.name}</option>
 					{/each}
 				</select>
@@ -169,7 +168,7 @@
 					class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
 				>
 					<option value="">All Members</option>
-					{#each data.users as u}
+					{#each data.users as u (u.id)}
 						<option value={u.id}>{u.fullName}</option>
 					{/each}
 				</select>
@@ -212,7 +211,7 @@
 			</div>
 		{:else}
 			<div class="divide-y divide-slate-800/60">
-				{#each data.items as item}
+				{#each data.items as item (item.id)}
 					{@const Icon = getActivityIcon(item.activityType)}
 					<div class="p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-slate-800/30 transition">
 						<div class="flex items-start gap-3.5 min-w-0 flex-1">

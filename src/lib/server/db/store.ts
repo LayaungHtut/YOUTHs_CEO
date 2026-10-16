@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import type {
 	Department,
-	NewDepartment,
 	User,
 	NewUser,
 	Session,
@@ -23,14 +22,11 @@ import type {
 	Achievement,
 	NewAchievement,
 	MemberAchievement,
-	NewMemberAchievement,
 	Conversation,
-	NewConversation,
 	ConversationParticipant,
 	Message,
 	NewMessage,
 	MessageReadReceipt,
-	NewMessageReadReceipt,
 	Notification,
 	NewNotification,
 	AuditLog,
@@ -413,7 +409,7 @@ export class DatabaseStore {
 
 	async upsertConnection(conn: NewMemberDatabaseConnection): Promise<MemberDatabaseConnection> {
 		const now = new Date();
-		let existing = await this.getConnectionByUserId(conn.userId);
+		const existing = await this.getConnectionByUserId(conn.userId);
 		const id = existing?.id || conn.id || crypto.randomUUID();
 		const updated: MemberDatabaseConnection = {
 			...conn,
@@ -531,7 +527,7 @@ export class DatabaseStore {
 			id,
 			actorRole: event.actorRole || 'CEO',
 			reason: event.reason || null,
-			source: (event.source as any) || 'CEO',
+			source: event.source || 'CEO',
 			idempotencyKey: event.idempotencyKey || null,
 			oldValue: event.oldValue || null,
 			newValue: event.newValue || null,
@@ -797,7 +793,7 @@ export class DatabaseStore {
 		// Check if already unlocked
 		for (const ma of this.memberAchievements.values()) {
 			if (ma.userId === userId && ma.achievementId === achievementId) {
-				return ma; // Already unlocked
+				return null; // already unlocked, so not new
 			}
 		}
 
@@ -946,10 +942,10 @@ export class DatabaseStore {
 		const msg = this.messages.get(id);
 		if (!msg) return null;
 
-		let editHistoryArr: any[] = [];
+		let editHistoryArr: { content: string; editedAt: Date | string }[] = [];
 		try {
 			if (msg.editHistory) editHistoryArr = JSON.parse(msg.editHistory);
-		} catch {}
+		} catch { /* malformed JSON: keep the default */ }
 		editHistoryArr.push({ content: msg.content, editedAt: new Date() });
 
 		msg.content = content;
@@ -1067,13 +1063,11 @@ export class DatabaseStore {
 
 		matchingMessages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-		const results: any[] = [];
-		for (const msg of matchingMessages) {
-			const conv = this.conversations.get(msg.conversationId)!;
-			const sender = this.users.get(msg.senderId) || null;
-			results.push({ message: msg, conversation: conv, sender });
-		}
-		return results;
+		return matchingMessages.map((msg) => ({
+			message: msg,
+			conversation: this.conversations.get(msg.conversationId)!,
+			sender: this.users.get(msg.senderId) || null
+		}));
 	}
 
 	// --- NOTIFICATIONS ---

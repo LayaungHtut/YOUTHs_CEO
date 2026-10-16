@@ -85,8 +85,8 @@ export const actions: Actions = {
 				success: true,
 				totalProcessed: result.totalProcessed
 			};
-		} catch (err: any) {
-			return fail(500, { error: err.message || 'Failed to process file' });
+		} catch (err) {
+			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to process file' });
 		}
 	}
 };

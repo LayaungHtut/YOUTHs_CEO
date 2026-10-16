@@ -40,12 +40,16 @@ export const actions: Actions = {
 		const name = (data.get('name') as string)?.trim();
 		const description = (data.get('description') as string)?.trim();
 		const icon = (data.get('icon') as string)?.trim() || 'award';
-		const category = (data.get('category') as any) || 'TASKS';
+		const rawCategory = data.get('category') || 'TASKS';
+		const category = (['TASKS', 'CONSISTENCY', 'DEPARTMENT', 'POINTS'] as const).find(
+			(c) => c === rawCategory
+		);
 		const threshold = parseInt(data.get('threshold') as string, 10) || 5;
 
 		if (!name || !description) {
 			return fail(400, { error: 'Name and description are required.' });
 		}
+		if (!category) return fail(400, { error: 'Invalid category.' });
 
 		const criteria = JSON.stringify({
 			type: 'COMPLETED_TASKS_COUNT',

@@ -1,17 +1,13 @@
 <script lang="ts">
 	import {
-		Database,
 		ShieldCheck,
 		KeyRound,
-		RefreshCw,
 		UploadCloud,
 		FileText,
 		CheckCircle2,
-		AlertCircle,
 		Copy,
 		Check,
 		X,
-		ArrowUpRight
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -64,7 +60,7 @@
 			<button
 				type="button"
 				onclick={() => (showGenerateModal = true)}
-				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 transition"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 transition"
 			>
 				<KeyRound class="w-4 h-4" />
 				<span>Generate Integration Token</span>
@@ -106,7 +102,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each data.connections as conn}
+						{#each data.connections as conn (conn.userId)}
 							<tr class="hover:bg-slate-800/30 transition">
 								<td class="py-3 px-4">
 									<a href={`/members/${conn.userId}`} class="font-bold text-white hover:text-indigo-400">
@@ -231,7 +227,7 @@ Content-Type: application/json
 						required
 						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
 					>
-						{#each data.eligibleMembers as member}
+						{#each data.eligibleMembers as member (member.id)}
 							<option value={member.id}>{member.fullName} (@{member.username})</option>
 						{/each}
 					</select>

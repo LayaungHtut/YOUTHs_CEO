@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		Users,
-		Shield,
 		CheckSquare,
 		AlertTriangle,
 		TrendingUp,
@@ -27,6 +26,15 @@
 </script>
 
 <div class="space-y-8">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Top Executive Banner -->
 	<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 		<div>
@@ -51,7 +59,7 @@
 			<button
 				type="button"
 				onclick={() => (showQuickCreateModal = true)}
-				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-violet-500 transition"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-violet-500 transition"
 			>
 				<Plus class="w-4 h-4" />
 				<span>Create Task</span>
@@ -149,7 +157,7 @@
 		</div>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-			{#each data.departmentStats as dept}
+			{#each data.departmentStats as dept (dept.id)}
 				<div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700/80 transition space-y-4">
 					<div class="flex items-start justify-between">
 						<div>
@@ -206,7 +214,7 @@
 						<span>All members are on schedule! No overdue tasks.</span>
 					</div>
 				{:else}
-					{#each data.membersNeedingAttention as member}
+					{#each data.membersNeedingAttention as member (member.id)}
 						<div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 flex items-center justify-between">
 							<div>
 								<div class="text-xs font-bold text-white">{member.fullName}</div>
@@ -261,7 +269,7 @@
 								</td>
 							</tr>
 						{:else}
-							{#each data.recentTasks as task}
+							{#each data.recentTasks as task (task.id)}
 								<tr class="hover:bg-slate-800/30 transition">
 									<td class="py-3 font-semibold text-slate-200">
 										<a href={`/tasks/${task.id}`} class="hover:text-indigo-400">
@@ -372,7 +380,7 @@
 							class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
 						>
 							<option value="">Select Department</option>
-							{#each data.departments as dept}
+							{#each data.departments as dept (dept.id)}
 								<option value={dept.id}>{dept.name}</option>
 							{/each}
 						</select>
@@ -387,7 +395,7 @@
 							class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
 						>
 							<option value="">Select Member</option>
-							{#each filteredMembers as member}
+							{#each filteredMembers as member (member.id)}
 								<option value={member.id}>{member.fullName} ({member.role})</option>
 							{/each}
 						</select>

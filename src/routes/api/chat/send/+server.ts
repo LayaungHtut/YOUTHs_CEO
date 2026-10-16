@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			content: body.content
 		});
 		return json({ success: true, message });
-	} catch (err: any) {
-		return json({ error: err.message || 'Failed to send message' }, { status: 400 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Failed to send message' }, { status: 400 });
 	}
 };

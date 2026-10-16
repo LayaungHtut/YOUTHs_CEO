@@ -1,22 +1,16 @@
 <script lang="ts">
 	import {
-		Users,
 		Award,
 		CheckSquare,
 		AlertTriangle,
 		Database,
-		Shield,
-		Calendar,
-		Clock,
 		ArrowLeft,
 		Plus,
 		MessageSquare,
-		KeyRound,
 		Copy,
 		Check,
 		RefreshCw,
 		X,
-		History,
 		Filter,
 		Trash2
 	} from '@lucide/svelte';
@@ -28,7 +22,7 @@
 	let activeTab = $state<'tasks' | 'points' | 'achievements' | 'sync'>('tasks');
 	let copiedToken = $state(false);
 
-	let taskList = $derived((data.taskHistory || data.tasks || []) as any[]);
+	let taskList = $derived(data.taskHistory);
 
 	function copyToken(token: string) {
 		navigator.clipboard.writeText(token);
@@ -314,7 +308,7 @@
 					class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
 				>
 					<option value="">All Task Weeks</option>
-					{#each data.taskWeeks || [] as w}
+					{#each data.taskWeeks || [] as w (w.id)}
 						<option value={w.id} selected={data.taskFilters?.weekId === w.id}>
 							Week of {new Date(w.weekStart).toLocaleDateString()}
 						</option>
@@ -364,7 +358,7 @@
 									</td>
 								</tr>
 							{:else}
-								{#each taskList as task}
+								{#each taskList as task (task.id)}
 									<tr class="transition hover:bg-slate-800/30">
 										<td class="px-4 py-3 font-semibold text-slate-200">
 											<a href={`/tasks/${task.id}`} class="font-bold hover:text-indigo-400">
@@ -486,7 +480,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-800/60">
-						{#each data.pointsSummary.transactions as tx}
+						{#each data.pointsSummary.transactions as tx (tx.id)}
 							<tr class="transition hover:bg-slate-800/30">
 								<td class="px-4 py-3">
 									<span
@@ -526,7 +520,7 @@
 					No achievements unlocked yet. Complete weekly tasks on time to unlock badges.
 				</div>
 			{:else}
-				{#each data.achievements as ach}
+				{#each data.achievements as ach (ach.id)}
 					<div
 						class="flex items-start gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/90 p-5"
 					>

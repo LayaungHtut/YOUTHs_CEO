@@ -20,8 +20,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const success = await deleteChatMessage(body.messageId, locals.user.id);
 		return json({ success });
-	} catch (err: any) {
-		return json({ error: err.message || 'Failed to delete message' }, { status: 403 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Failed to delete message' }, { status: 403 });
 	}
 };
 

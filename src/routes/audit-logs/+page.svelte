@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { ShieldCheck, Search, Filter, FileText, Clock, User, Info, X } from '@lucide/svelte';
+	import { ShieldCheck, Info, X } from '@lucide/svelte';
 
 	let { data } = $props();
 
-	let selectedLog = $state<any>(null);
+	type Log = (typeof data.logs)[number];
+	let selectedLog = $state<Log | null>(null);
 	let showDetailModal = $state(false);
 
-	function openDetail(log: any) {
+	function openDetail(log: Log) {
 		selectedLog = log;
 		showDetailModal = true;
 	}
@@ -91,7 +92,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each data.logs as log}
+						{#each data.logs as log (log.id)}
 							<tr class="transition hover:bg-slate-800/30">
 								<td class="px-4 py-3 text-slate-400">
 									{new Date(log.createdAt).toLocaleString()}

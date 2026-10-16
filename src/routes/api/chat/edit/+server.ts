@@ -23,8 +23,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Message not found' }, { status: 404 });
 		}
 		return json({ success: true, message: updated });
-	} catch (err: any) {
-		return json({ error: err.message || 'Failed to edit message' }, { status: 403 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Failed to edit message' }, { status: 403 });
 	}
 };
 

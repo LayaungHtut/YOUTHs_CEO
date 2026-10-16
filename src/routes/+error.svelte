@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { AlertTriangle, ArrowLeft, Home } from '@lucide/svelte';
+	import { AlertTriangle, Home } from '@lucide/svelte';
 </script>
 
 <div class="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-slate-100 font-sans">

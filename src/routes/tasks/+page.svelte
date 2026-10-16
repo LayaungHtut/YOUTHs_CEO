@@ -1,16 +1,10 @@
 <script lang="ts">
 	import {
-		CheckSquare,
 		Plus,
 		Search,
-		Filter,
 		Columns,
 		List,
-		Sparkles,
-		Clock,
 		AlertTriangle,
-		CheckCircle2,
-		MoreHorizontal,
 		ArrowUpRight,
 		X
 	} from '@lucide/svelte';
@@ -21,7 +15,6 @@
 	let showCreateModal = $state(false);
 
 	let selectedDeptForCreate = $state('');
-	let selectedAssignees = $state<string[]>([]);
 
 	const filteredMembersForCreate = $derived(
 		selectedDeptForCreate
@@ -43,6 +36,15 @@
 </script>
 
 <div class="space-y-6">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Page Header -->
 	<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 		<div>
@@ -89,7 +91,7 @@
 			<button
 				type="button"
 				onclick={() => (showCreateModal = true)}
-				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-violet-500 transition"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-violet-500 transition"
 			>
 				<Plus class="w-4 h-4" />
 				<span>Create Task</span>
@@ -117,7 +119,7 @@
 				class="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
 			>
 				<option value="">All Departments</option>
-				{#each data.departments as dept}
+				{#each data.departments as dept (dept.id)}
 					<option value={dept.id}>{dept.name}</option>
 				{/each}
 			</select>
@@ -179,7 +181,7 @@
 								</td>
 							</tr>
 						{:else}
-							{#each data.tasks as task}
+							{#each data.tasks as task (task.id)}
 								<tr class="hover:bg-slate-800/30 transition">
 									<td class="py-3 px-4">
 										<a href={`/tasks/${task.id}`} class="font-bold text-white hover:text-indigo-400 transition">
@@ -279,7 +281,7 @@
 	<!-- VIEW 2: Kanban Board View -->
 	{#if currentView === 'kanban'}
 		<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-			{#each kanbanColumns as col}
+			{#each kanbanColumns as col (col.id)}
 				{@const colTasks = getTasksByStatus(col.id)}
 				<div class={`p-4 rounded-2xl border ${col.color} space-y-3 min-h-[500px] flex flex-col`}>
 					<div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
@@ -293,7 +295,7 @@
 						{#if colTasks.length === 0}
 							<div class="py-8 text-center text-xs text-slate-500">No tasks</div>
 						{:else}
-							{#each colTasks as task}
+							{#each colTasks as task (task.id)}
 								<div class="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-2 hover:border-slate-700 transition">
 									<div class="flex items-start justify-between gap-2">
 										<a href={`/tasks/${task.id}`} class="text-xs font-bold text-white hover:text-indigo-400">
@@ -401,7 +403,7 @@
 						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
 					>
 						<option value="">Select Department</option>
-						{#each data.departments as dept}
+						{#each data.departments as dept (dept.id)}
 							<option value={dept.id}>{dept.name}</option>
 						{/each}
 					</select>
@@ -418,7 +420,7 @@
 						required
 						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 h-28"
 					>
-						{#each filteredMembersForCreate as member}
+						{#each filteredMembersForCreate as member (member.id)}
 							<option value={member.id}>
 								{member.fullName} (@{member.username}) - {member.role}
 							</option>

@@ -1,4 +1,3 @@
-import { db } from '$lib/server/db';
 import { getNotifications, getUnreadCount } from '$lib/server/services/notificationService';
 import type { LayoutServerLoad } from './$types';
 

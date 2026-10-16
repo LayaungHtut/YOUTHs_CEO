@@ -90,7 +90,7 @@ export const actions: Actions = {
 			action: AuditActions.EMAIL_TEMPLATE_UPDATE,
 			targetType: 'SETTINGS',
 			targetId: 'email.template',
-			metadata: newTemplate as any
+			metadata: { ...newTemplate }
 		});
 
 		return {

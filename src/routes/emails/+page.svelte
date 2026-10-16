@@ -9,14 +9,9 @@
 		Check,
 		AlertTriangle,
 		RotateCcw,
-		Sparkles,
 		ShieldCheck,
-		Users,
-		Building2,
-		ExternalLink,
 		Eye,
 		Save,
-		RefreshCw
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -230,7 +225,7 @@
 									class="h-9 w-12 cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-1"
 								/>
 								<div class="flex flex-wrap items-center gap-1.5">
-									{#each colorPresets as preset}
+									{#each colorPresets as preset (preset.value)}
 										<button
 											type="button"
 											onclick={() => (accentColor = preset.value)}
@@ -728,7 +723,7 @@
 							class="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
 						>
 							<option value="">Choose Department...</option>
-							{#each data.departments as dept}
+							{#each data.departments as dept (dept.id)}
 								<option value={dept.id}>{dept.name}</option>
 							{/each}
 						</select>
@@ -748,7 +743,7 @@
 							class="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
 						>
 							<option value="">Choose Member...</option>
-							{#each data.members as m}
+							{#each data.members as m (m.id)}
 								<option value={m.id}>{m.fullName} (@{m.username}) — {m.email}</option>
 							{/each}
 						</select>

@@ -2,12 +2,7 @@
 	import {
 		Building2,
 		Shield,
-		Users,
-		CheckSquare,
-		TrendingUp,
 		AlertTriangle,
-		MoreHorizontal,
-		UserCheck,
 		Edit3,
 		ArrowRight,
 		X
@@ -16,17 +11,18 @@
 	let { data, form } = $props();
 
 	let showAssignHeadModal = $state(false);
-	let selectedDept = $state<any>(null);
+	type Dept = (typeof data.departments)[number];
+	let selectedDept = $state<Dept | null>(null);
 
 	let showEditDescModal = $state(false);
 	let editDesc = $state('');
 
-	function openAssignHead(dept: any) {
+	function openAssignHead(dept: Dept) {
 		selectedDept = dept;
 		showAssignHeadModal = true;
 	}
 
-	function openEditDesc(dept: any) {
+	function openEditDesc(dept: Dept) {
 		selectedDept = dept;
 		editDesc = dept.description;
 		showEditDescModal = true;
@@ -34,6 +30,15 @@
 </script>
 
 <div class="space-y-6">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Page Header -->
 	<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 		<div>
@@ -51,7 +56,7 @@
 
 	<!-- Department Cards Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		{#each data.departments as dept}
+		{#each data.departments as dept (dept.id)}
 			<div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800/80 hover:border-slate-700/80 transition flex flex-col justify-between space-y-5">
 				<div class="space-y-4">
 					<div class="flex items-start justify-between">
@@ -177,7 +182,7 @@
 						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
 					>
 						<option value="">Select a member</option>
-						{#each data.allUsers as user}
+						{#each data.allUsers as user (user.id)}
 							{#if user.role !== 'CEO'}
 								<option value={user.id} selected={selectedDept.headUserId === user.id}>
 									{user.fullName} (@{user.username}) - Current Role: {user.role}

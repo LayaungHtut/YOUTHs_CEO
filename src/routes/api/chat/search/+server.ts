@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 
 		// Map results with safe user presentation
-		const formatted = results.map((r: any) => ({
+		const formatted = results.map((r) => ({
 			message: {
 				id: r.message.id,
 				conversationId: r.message.conversationId,
@@ -47,20 +47,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						username: r.sender.username,
 						role: r.sender.role
 				  }
-				: null,
-			otherParticipant: r.otherParticipant
-				? {
-						id: r.otherParticipant.id,
-						fullName: r.otherParticipant.fullName,
-						username: r.otherParticipant.username,
-						role: r.otherParticipant.role
-				  }
 				: null
 		}));
 
 		return json({ success: true, results: formatted });
-	} catch (err: any) {
-		return json({ error: err.message || 'Search failed' }, { status: 500 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Search failed' }, { status: 500 });
 	}
 };
 

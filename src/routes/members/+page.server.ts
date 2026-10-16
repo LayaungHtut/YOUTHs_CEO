@@ -1,6 +1,7 @@
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
+import type { UserRole, AccountStatus } from '$lib/server/db/types';
 import { requireRole } from '$lib/server/auth/permissions';
 import {
 	hashPassword,
@@ -18,8 +19,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const search = url.searchParams.get('search') || undefined;
 	const departmentId = url.searchParams.get('dept') || undefined;
-	const role = (url.searchParams.get('role') as any) || undefined;
-	const accountStatus = (url.searchParams.get('status') as any) || undefined;
+	const role = (url.searchParams.get('role') as UserRole | null) || undefined;
+	const accountStatus = (url.searchParams.get('status') as AccountStatus | null) || undefined;
 
 	const allUsers = await db.getAllUsers({ search, departmentId, role, accountStatus });
 	const departments = await db.getDepartments();
@@ -68,12 +69,15 @@ export const actions: Actions = {
 		const username = (data.get('username') as string)?.trim().toLowerCase();
 		const email = (data.get('email') as string)?.trim().toLowerCase();
 		const departmentId = data.get('departmentId') as string;
-		const role = (data.get('role') as any) || 'MEMBER';
+		const role = (data.get('role') as string) || 'MEMBER';
 		const customPassword = (data.get('customPassword') as string)?.trim();
 		const deliveryEmail = (data.get('deliveryEmail') as string)?.trim().toLowerCase();
 
 		if (!fullName || !username || !email) {
 			return fail(400, { error: 'Full name, username, and email are required.' });
+		}
+		if (role !== 'HEAD' && role !== 'MEMBER') {
+			return fail(400, { error: 'Invalid role.' });
 		}
 
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -172,8 +176,9 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const userId = data.get('userId') as string;
-		const newRole = data.get('newRole') as 'HEAD' | 'MEMBER';
+		const newRole = data.get('newRole');
 		const departmentId = data.get('departmentId') as string;
+		if (newRole !== 'HEAD' && newRole !== 'MEMBER') return fail(400, { error: 'Invalid role.' });
 
 		const target = await db.getUserById(userId);
 		if (!target) return fail(404, { error: 'User not found' });
@@ -318,10 +323,10 @@ export const actions: Actions = {
 					fullName: target.fullName
 				}
 			};
-		} catch (err: any) {
+		} catch (err) {
 			console.error('[deleteMember] Error deleting member:', err);
 			return fail(500, {
-				error: err?.message || 'Failed to remove member account.'
+				error: (err instanceof Error && err.message) || 'Failed to remove member account.'
 			});
 		}
 	}

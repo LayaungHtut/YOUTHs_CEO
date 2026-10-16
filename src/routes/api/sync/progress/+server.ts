@@ -33,8 +33,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const result = await ingestProgressSync(memberId, parseResult.data);
 		return json(result);
-	} catch (err: any) {
-		return json({ error: err.message || 'Failed to ingest progress sync' }, { status: 400 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Failed to ingest progress sync' }, { status: 400 });
 	}
 };
 

@@ -1,20 +1,17 @@
 <script lang="ts">
 	import {
-		Settings,
 		Building2,
 		Sparkles,
 		Award,
-		ShieldCheck,
 		Check,
 		AlertCircle,
-		Send,
 		Play,
 		Save
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
-	let testAiStatus = $state<{ loading: boolean; result?: any; error?: string }>({ loading: false });
+	let testAiStatus = $state<{ loading: boolean; result?: { latencyMs: number; model: string }; error?: string }>({ loading: false });
 
 	async function runAiHealthCheck() {
 		testAiStatus = { loading: true };
@@ -32,8 +29,8 @@
 			} else {
 				testAiStatus = { loading: false, error: resData.error || 'Connection test failed' };
 			}
-		} catch (err: any) {
-			testAiStatus = { loading: false, error: err.message || 'Network error' };
+		} catch (err) {
+			testAiStatus = { loading: false, error: (err instanceof Error && err.message) || 'Network error' };
 		}
 	}
 </script>

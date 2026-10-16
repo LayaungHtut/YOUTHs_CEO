@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Shield, Sparkles, CheckCircle2, AlertCircle } from '@lucide/svelte';
+	import { Shield, CheckCircle2, AlertCircle } from '@lucide/svelte';
 
 	let { form } = $props();
 
@@ -143,6 +143,14 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<CheckCircle2
+						class={`h-3.5 w-3.5 ${hasLowercase ? 'text-emerald-400' : 'text-slate-600'}`}
+					/>
+					<span class={hasLowercase ? 'text-slate-200' : ''}
+						>At least one lowercase letter (a-z)</span
+					>
+				</div>
+				<div class="flex items-center gap-2">
+					<CheckCircle2
 						class={`h-3.5 w-3.5 ${hasNumber ? 'text-emerald-400' : 'text-slate-600'}`}
 					/>
 					<span class={hasNumber ? 'text-slate-200' : ''}>At least one number (0-9)</span>
@@ -175,7 +183,7 @@
 
 			<button
 				type="submit"
-				class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition duration-150 hover:from-indigo-500 hover:to-violet-500"
+				class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition duration-150 hover:from-indigo-500 hover:to-violet-500"
 			>
 				<Shield class="h-4 w-4" />
 				<span>Initialize CEO Command Center</span>

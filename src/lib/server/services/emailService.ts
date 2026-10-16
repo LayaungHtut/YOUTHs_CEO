@@ -423,9 +423,10 @@ export async function sendEmail(params: {
 			try {
 				await sendWithPort(587, false);
 				return { sent: true };
-			} catch (firstErr: any) {
+			} catch (firstErr) {
 				// If port 587 has a connection network issue, fallback to port 465
-				if (firstErr?.code === 'ECONNREFUSED' || firstErr?.code === 'ETIMEDOUT') {
+				const code = (firstErr as NodeJS.ErrnoException | null)?.code;
+				if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT') {
 					await sendWithPort(465, true);
 					return { sent: true };
 				}

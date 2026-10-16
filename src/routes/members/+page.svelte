@@ -1,14 +1,10 @@
 <script lang="ts">
 	import {
-		Users,
 		UserPlus,
 		Search,
-		Filter,
 		Shield,
 		Award,
-		CheckSquare,
 		AlertTriangle,
-		MoreHorizontal,
 		KeyRound,
 		UserX,
 		UserCheck,
@@ -28,8 +24,9 @@
 	let showRoleModal = $state(false);
 	let showResetModal = $state(false);
 	let showDeleteModal = $state(false);
-	let selectedUserForRole = $state<any>(null);
-	let selectedUserForDelete = $state<any>(null);
+	type Member = (typeof data.members)[number];
+	let selectedUserForRole = $state<Member | null>(null);
+	let selectedUserForDelete = $state<Member | null>(null);
 
 	let copiedPassword = $state(false);
 	let copiedToken = $state(false);
@@ -107,7 +104,7 @@
 		<button
 			type="button"
 			onclick={() => (showAddModal = true)}
-			class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:from-indigo-500 hover:to-violet-500"
+			class="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:from-indigo-500 hover:to-violet-500"
 		>
 			<UserPlus class="h-4 w-4" />
 			<span>Add Member</span>
@@ -156,7 +153,7 @@
 				class="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
 			>
 				<option value="">All Departments</option>
-				{#each data.departments as dept}
+				{#each data.departments as dept (dept.id)}
 					<option value={dept.id}>{dept.name}</option>
 				{/each}
 			</select>
@@ -217,7 +214,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each data.members as member}
+						{#each data.members as member (member.id)}
 							<tr class="transition hover:bg-slate-800/40">
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
@@ -511,7 +508,7 @@
 							class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
 						>
 							<option value="">Select Department</option>
-							{#each data.departments as dept}
+							{#each data.departments as dept (dept.id)}
 								<option value={dept.id}>{dept.name}</option>
 							{/each}
 						</select>
@@ -841,7 +838,7 @@
 						name="departmentId"
 						class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
 					>
-						{#each data.departments as dept}
+						{#each data.departments as dept (dept.id)}
 							<option value={dept.id} selected={selectedUserForRole.departmentId === dept.id}
 								>{dept.name}</option
 							>

@@ -1,33 +1,36 @@
-import { fail, type Actions } from '@sveltejs/kit';
+import { type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
 import { requireRole } from '$lib/server/auth/permissions';
 import { setSetting, getAllSettings } from '$lib/server/services/settingsService';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireRole(locals.user, 'CEO');
 
-	const rawSettings: Record<string, any> = await getAllSettings();
+	const rawSettings = (await getAllSettings()) as Record<string, { value?: unknown } | undefined>;
+	// text settings fall back on empty too; numbers and booleans only when missing
+	const text = (key: string, fallback: string) => (rawSettings[key]?.value as string) || fallback;
+	const val = <T>(key: string, fallback: T) => (rawSettings[key]?.value as T | undefined) ?? fallback;
 
 	return {
 		settings: {
-			orgName: rawSettings['org.name']?.value || 'YOUTHs (Youth Opportunities United Through Human Skills)',
-			orgTimezone: rawSettings['org.timezone']?.value || 'Asia/Yangon',
-			orgDescription:
-				rawSettings['org.description']?.value ||
-				'Empowering youth leaders across software development, graphic design, games & esports, merchandise & branding, and finance & operations.',
-			cycleStart: rawSettings['schedule.cycle_start_day']?.value || 'Monday',
-			deadlineDay: rawSettings['schedule.deadline_day']?.value || 'Saturday',
-			reviewDay: rawSettings['schedule.review_day']?.value || 'Sunday',
-			startingBalance: rawSettings['points.starting_balance']?.value ?? 100,
-			completionReward: rawSettings['points.completion_reward']?.value ?? 10,
-			overduePenalty: rawSettings['points.overdue_penalty']?.value ?? 10,
-			maxWeeklyDeduction: rawSettings['points.max_weekly_deduction']?.value ?? 30,
-			allowNegative: rawSettings['points.allow_negative']?.value ?? false,
+			orgName: text('org.name', 'YOUTHs (Youth Opportunities United Through Human Skills)'),
+			orgTimezone: text('org.timezone', 'Asia/Yangon'),
+			orgDescription: text(
+				'org.description',
+				'Empowering youth leaders across software development, graphic design, games & esports, merchandise & branding, and finance & operations.'
+			),
+			cycleStart: text('schedule.cycle_start_day', 'Monday'),
+			deadlineDay: text('schedule.deadline_day', 'Saturday'),
+			reviewDay: text('schedule.review_day', 'Sunday'),
+			startingBalance: val('points.starting_balance', 100),
+			completionReward: val('points.completion_reward', 10),
+			overduePenalty: val('points.overdue_penalty', 10),
+			maxWeeklyDeduction: val('points.max_weekly_deduction', 30),
+			allowNegative: val('points.allow_negative', false),
 			openRouterKey: rawSettings['ai.openrouter_api_key']?.value ? '••••••••••••••••' : '',
-			aiModel: rawSettings['ai.default_model']?.value || 'anthropic/claude-3.5-sonnet',
-			aiTemperature: rawSettings['ai.temperature']?.value ?? 0.2,
-			autoPublish: rawSettings['ai.auto_publish']?.value ?? false
+			aiModel: text('ai.default_model', 'anthropic/claude-3.5-sonnet'),
+			aiTemperature: val('ai.temperature', 0.2),
+			autoPublish: val('ai.auto_publish', false)
 		}
 	};
 };

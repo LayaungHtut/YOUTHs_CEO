@@ -2,13 +2,8 @@
 	import {
 		Award,
 		Plus,
-		CheckCircle2,
-		Zap,
-		Flame,
-		Shield,
-		RefreshCw,
-		Check,
-		X
+		X,
+		AlertTriangle
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -17,6 +12,15 @@
 </script>
 
 <div class="space-y-6">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Page Header -->
 	<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 		<div>
@@ -34,7 +38,7 @@
 		<button
 			type="button"
 			onclick={() => (showCreateModal = true)}
-			class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-amber-600/20 hover:from-amber-500 hover:to-indigo-500 transition"
+			class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-amber-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-amber-600/20 hover:from-amber-500 hover:to-indigo-500 transition"
 		>
 			<Plus class="w-4 h-4" />
 			<span>Create Achievement</span>
@@ -43,7 +47,7 @@
 
 	<!-- Achievement Cards Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		{#each data.achievements as ach}
+		{#each data.achievements as ach (ach.id)}
 			<div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 transition flex flex-col justify-between space-y-4">
 				<div class="space-y-3">
 					<div class="flex items-start justify-between">

@@ -1,5 +1,4 @@
 import { db } from '../db';
-import type { Achievement } from '../db/types';
 import { logAudit, AuditActions } from './auditService';
 import { createNotification } from './notificationService';
 
@@ -20,7 +19,7 @@ export async function checkAndUnlockAchievements(userId: string): Promise<string
 	for (const ach of allAchievements) {
 		if (unlockedIds.has(ach.id)) continue;
 
-		let criteria: Record<string, unknown> = {};
+		let criteria: Record<string, unknown>;
 		try {
 			criteria = JSON.parse(ach.criteria);
 		} catch {

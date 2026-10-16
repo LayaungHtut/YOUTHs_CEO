@@ -4,18 +4,14 @@
 		MessageSquare,
 		Send,
 		UserPlus,
-		Search,
-		MoreHorizontal,
 		Trash2,
-		Edit2,
-		Check,
-		Clock,
-		X
+		X,
+		AlertTriangle
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
-	let messages = $state<any[]>([]);
+	let messages = $state<typeof data.activeMessages>([]);
 	let messageInput = $state('');
 	let showNewChatModal = $state(false);
 	let sseSource: EventSource | null = null;
@@ -101,6 +97,15 @@
 	}
 </script>
 
+{#if form?.error}
+	<div
+		class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300 mb-3"
+	>
+		<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+		<span>{form.error}</span>
+	</div>
+{/if}
+
 <div class="h-[calc(100vh-8rem)] flex flex-col md:flex-row rounded-2xl bg-slate-900/90 border border-slate-800/80 overflow-hidden shadow-2xl">
 	<!-- Left: Conversation Sidebar -->
 	<div class="w-full md:w-80 border-r border-slate-800 flex flex-col bg-slate-950/60">
@@ -127,7 +132,7 @@
 					No active conversations. Click "New" to start communicating with any member or Head.
 				</div>
 			{:else}
-				{#each data.conversations as conv}
+				{#each data.conversations as conv (conv.id)}
 					{@const isSelected = conv.id === data.activeConversationId}
 					<a
 						href={`/messages?convId=${conv.id}`}
@@ -191,7 +196,7 @@
 						<div>Send a direct message below to begin organizational communication.</div>
 					</div>
 				{:else}
-					{#each messages as msg}
+					{#each messages as msg (msg.id)}
 						{@const isMe = msg.senderId !== data.activeConversation.otherUser?.id}
 						<div class={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
 							<div class="flex items-end gap-2 max-w-lg">
@@ -290,7 +295,7 @@
 						class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
 					>
 						<option value="">Choose a recipient</option>
-						{#each data.eligiblePartners as partner}
+						{#each data.eligiblePartners as partner (partner.id)}
 							<option value={partner.id}>
 								{partner.fullName} (@{partner.username}) - {partner.role}
 							</option>

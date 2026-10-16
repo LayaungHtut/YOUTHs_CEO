@@ -62,8 +62,8 @@ export const actions: Actions = {
 		try {
 			const proposal = await generateWeeklyDistribution(weekId, locals.user!.id);
 			return { success: true, count: proposal.assignments.length };
-		} catch (err: any) {
-			return fail(500, { error: err.message || 'Failed to generate weekly distribution' });
+		} catch (err) {
+			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to generate weekly distribution' });
 		}
 	},
 
@@ -75,11 +75,13 @@ export const actions: Actions = {
 		const memberId = data.get('memberId') as string;
 		const title = (data.get('title') as string)?.trim();
 		const description = (data.get('description') as string)?.trim();
-		const priority = data.get('priority') as any;
+		const rawPriority = data.get('priority');
+		const priority = (['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).find((p) => p === rawPriority);
 
 		if (!weekId || !memberId || !title) {
 			return fail(400, { error: 'Missing required override fields' });
 		}
+		if (!priority) return fail(400, { error: 'Invalid priority.' });
 
 		await overrideProposalAssignment(
 			weekId,
@@ -123,8 +125,8 @@ export const actions: Actions = {
 		try {
 			const published = await publishWeeklyDistribution(weekId, locals.user!.id);
 			return { success: true, publishedCount: published.length };
-		} catch (err: any) {
-			return fail(500, { error: err.message || 'Failed to publish distribution' });
+		} catch (err) {
+			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to publish distribution' });
 		}
 	}
 };

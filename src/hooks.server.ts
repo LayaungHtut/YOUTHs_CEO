@@ -1,13 +1,17 @@
 import { redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
-import { db } from '$lib/server/db';
+import { db, PostgresStore } from '$lib/server/db';
 import { SESSION_COOKIE_NAME, validateSessionToken } from '$lib/server/auth/session';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// seeds an empty database once per process; returns at once after it has succeeded
+	if (db instanceof PostgresStore) await db.ensureInitialized();
+
 	const token = event.cookies.get(SESSION_COOKIE_NAME);
 	if (token) {
 		const auth = await validateSessionToken(token);
-		if (auth) {
+		// The sessions table is shared with the HEAD and MEMBER apps: only a CEO session counts here.
+		if (auth && auth.user.role === 'CEO') {
 			event.locals.session = auth.session;
 			event.locals.user = auth.user;
 		} else {

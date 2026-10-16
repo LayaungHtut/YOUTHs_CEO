@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../db';
+import type { User } from '../db/types';
 import {
 	createManualTask,
 	updateTaskStatus,
@@ -9,13 +10,12 @@ import {
 	cancelTask,
 	getTaskTimeline,
 	getMemberTaskHistory,
-	checkAndMarkOverdueTasks
 } from './taskService';
 
 describe('Task History & Lifecycle Service', () => {
-	let ceoUser: any;
-	let memberUser: any;
-	let alternateUser: any;
+	let ceoUser: User;
+	let memberUser: User;
+	let alternateUser: User;
 
 	beforeEach(async () => {
 		db.resetForTesting();

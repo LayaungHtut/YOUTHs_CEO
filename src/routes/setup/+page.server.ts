@@ -1,4 +1,4 @@
-import { fail, redirect, type Actions } from '@sveltejs/kit';
+import { fail, redirect, isRedirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { hashPassword, validatePasswordStrength } from '$lib/server/auth/password';
@@ -77,9 +77,9 @@ export const actions: Actions = {
 			setSessionCookie(cookies, session.id);
 
 			throw redirect(303, '/');
-		} catch (err: any) {
-			if (err.status === 303) throw err;
-			return fail(500, { error: err.message || 'Failed to initialize CEO account.' });
+		} catch (err) {
+			if (isRedirect(err)) throw err;
+			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to initialize CEO account.' });
 		}
 	}
 };

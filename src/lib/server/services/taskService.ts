@@ -1,5 +1,5 @@
 import { db } from '../db';
-import type { Task, NewTask, TaskStatus, TaskPriority, TaskSource } from '../db/types';
+import type { Task, TaskEvent, TaskStatus, TaskPriority, TaskSource } from '../db/types';
 import { logAudit, AuditActions } from './auditService';
 import { awardTaskCompletion, penalizeOverdueTask } from './pointsService';
 import { checkAndUnlockAchievements } from './achievementService';
@@ -23,7 +23,7 @@ async function resolveActor(actorId: string): Promise<{
 	return {
 		actorId: user.id,
 		actorRole: user.role,
-		source: (user.role as any) || 'MEMBER'
+		source: user.role
 	};
 }
 
@@ -468,7 +468,12 @@ export async function restoreTask(params: {
 
 export async function getTaskTimeline(taskId: string) {
 	const events = await db.getTaskEvents(taskId, 'asc');
-	const enriched: any[] = [];
+	const enriched: (TaskEvent & {
+		actorName: string;
+		actorRole: string;
+		parsedOldValue: unknown;
+		parsedNewValue: unknown;
+	})[] = [];
 
 	for (const ev of events) {
 		let actorName = 'System';
@@ -485,14 +490,14 @@ export async function getTaskTimeline(taskId: string) {
 			actorRole = 'AI';
 		}
 
-		let oldValParsed = null;
-		let newValParsed = null;
+		let oldValParsed: unknown = null;
+		let newValParsed: unknown = null;
 		try {
 			if (ev.oldValue) oldValParsed = JSON.parse(ev.oldValue);
-		} catch {}
+		} catch { /* malformed JSON: keep the default */ }
 		try {
 			if (ev.newValue) newValParsed = JSON.parse(ev.newValue);
-		} catch {}
+		} catch { /* malformed JSON: keep the default */ }
 
 		enriched.push({
 			...ev,
@@ -534,7 +539,7 @@ export async function getMemberTaskHistory(params: {
 
 	const ledger = await db.getLedgerByUserId(params.userId);
 
-	const enriched: any[] = [];
+	const enriched: (Task & { pointsImpact: number; eventsCount: number; recentEvents: TaskEvent[] })[] = [];
 	for (const t of memberTasks) {
 		const events = await db.getTaskEvents(t.id, 'asc');
 		const pointsForTask = ledger

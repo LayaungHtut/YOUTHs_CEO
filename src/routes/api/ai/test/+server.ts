@@ -62,11 +62,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			latencyMs: latency,
 			response: data.choices?.[0]?.message?.content
 		});
-	} catch (err: any) {
+	} catch (err) {
 		return json(
 			{
 				success: false,
-				error: err.message || 'Connection failed'
+				error: (err instanceof Error && err.message) || 'Connection failed'
 			},
 			{ status: 500 }
 		);

@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		start(controller) {
 			const encoder = new TextEncoder();
 
-			function sendEvent(type: string, data: any) {
+			function sendEvent(type: string, data: unknown) {
 				const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
 				controller.enqueue(encoder.encode(payload));
 			}
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			sendEvent('connected', { userId, timestamp: new Date().toISOString() });
 
 			// Listener for user-specific direct events (e.g. notifications, incoming DMs)
-			const userListener = (msg: any) => {
+			const userListener = (msg: unknown) => {
 				sendEvent('message', msg);
 			};
 			chatEmitter.on(`user:${userId}`, userListener);

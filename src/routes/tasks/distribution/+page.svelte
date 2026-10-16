@@ -4,30 +4,37 @@
 		Calendar,
 		Users,
 		Layers,
-		CheckCircle2,
 		AlertCircle,
 		Send,
 		Edit3,
 		Trash2,
-		RefreshCw,
-		HelpCircle,
 		X
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
 	let showEditModal = $state(false);
-	let selectedAssignment = $state<any>(null);
+	type Assignment = NonNullable<typeof data.assignments>[number];
+	let selectedAssignment = $state<Assignment | null>(null);
 
 	let isGenerating = $state(false);
 
-	function openEditModal(assignment: any) {
+	function openEditModal(assignment: Assignment) {
 		selectedAssignment = assignment;
 		showEditModal = true;
 	}
 </script>
 
 <div class="space-y-6">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertCircle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Page Header -->
 	<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 		<div>
@@ -51,7 +58,7 @@
 					class={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-lg transition ${
 						data.week.distributionStatus === 'PUBLISHED'
 							? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-							: 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/30'
+							: 'bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/30'
 					}`}
 				>
 					<Sparkles class={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -64,7 +71,7 @@
 					<input type="hidden" name="weekId" value={data.week.id} />
 					<button
 						type="submit"
-						class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/30 transition"
+						class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/30 transition"
 					>
 						<Send class="w-4 h-4" />
 						<span>Publish & Dispatch Tasks</span>
@@ -169,6 +176,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-800/60">
+						<!-- eslint-disable-next-line svelte/require-each-key -- AI output can repeat a member, and a duplicate key would crash the page -->
 						{#each data.assignments as item}
 							<tr class="hover:bg-slate-800/30 transition">
 								<td class="py-3 px-3 font-semibold text-white">

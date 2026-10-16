@@ -1,17 +1,13 @@
 <script lang="ts">
 	import {
-		CheckSquare,
 		ArrowLeft,
 		Calendar,
 		Clock,
 		Building2,
-		Users,
 		Award,
 		AlertTriangle,
-		CheckCircle2,
 		ShieldAlert,
 		Edit3,
-		MessageSquare,
 		History,
 		X
 	} from '@lucide/svelte';
@@ -21,10 +17,19 @@
 	let showEditModal = $state(false);
 	let showCancelConfirmModal = $state(false);
 
-	let eventsList = $derived(((data as any).timelineEvents || (data as any).events || []) as any[]);
+	let eventsList = $derived(data.events);
 </script>
 
 <div class="space-y-6">
+	{#if form?.error}
+		<div
+			class="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+		>
+			<AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+			<span>{form.error}</span>
+		</div>
+	{/if}
+
 	<!-- Back Button -->
 	<div>
 		<a
@@ -220,7 +225,7 @@
 					{#if eventsList.length === 0}
 						<div class="py-6 text-center text-xs text-slate-500">No events recorded.</div>
 					{:else}
-						{#each eventsList as event}
+						{#each eventsList as event (event.id)}
 							<div
 								class="space-y-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-4 transition hover:border-slate-700"
 							>

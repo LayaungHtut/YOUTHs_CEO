@@ -18,8 +18,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		const result = await getConversationMessagesPaginated(convId, locals.user.id, limit, cursor);
 		return json({ success: true, ...result });
-	} catch (err: any) {
-		return json({ error: err.message || 'Failed to fetch messages' }, { status: 403 });
+	} catch (err) {
+		return json({ error: (err instanceof Error && err.message) || 'Failed to fetch messages' }, { status: 403 });
 	}
 };
 

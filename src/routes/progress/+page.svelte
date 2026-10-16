@@ -1,11 +1,8 @@
 <script lang="ts">
 	import {
-		BarChart3,
 		Award,
 		TrendingUp,
 		TrendingDown,
-		CheckCircle2,
-		AlertTriangle,
 		Building2,
 		Users,
 		ShieldCheck,
@@ -111,7 +108,7 @@
 							</td>
 						</tr>
 					{:else}
-						{#each data.leaderboard as member, idx}
+						{#each data.leaderboard as member, idx (member.id)}
 							<tr class="hover:bg-slate-800/30 transition">
 								<td class="py-3 px-4 font-bold text-slate-400">
 									{#if idx === 0}
@@ -194,7 +191,7 @@
 		</h3>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-			{#each data.departmentAnalytics as dept}
+			{#each data.departmentAnalytics as dept (dept.id)}
 				<div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/80 space-y-3">
 					<div class="flex items-center justify-between">
 						<span class="font-bold text-sm text-white">{dept.name}</span>

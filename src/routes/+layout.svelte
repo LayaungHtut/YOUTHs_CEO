@@ -127,7 +127,7 @@
 
 			<!-- Navigation Links -->
 			<nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-				{#each navItems as item}
+				{#each navItems as item (item.href)}
 					{@const active = isActive(item.href)}
 					<a
 						href={item.href}
@@ -240,7 +240,7 @@
 									{#if data.notifications.length === 0}
 										<div class="py-6 text-center text-xs text-slate-500">No new notifications</div>
 									{:else}
-										{#each data.notifications as notif}
+										{#each data.notifications as notif (notif.id)}
 											<div class="py-2.5">
 												<div class="text-xs font-semibold text-slate-200">{notif.title}</div>
 												<div class="mt-0.5 text-[11px] text-slate-400">{notif.message}</div>

@@ -24,7 +24,7 @@ export interface ActivityFeedItem {
 	targetTaskId: string | null;
 	timestamp: Date;
 	badgeVariant: 'indigo' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'slate';
-	metadata?: any;
+	metadata?: Record<string, unknown>;
 }
 
 export async function getOrganizationActivityFeed(filters?: {
@@ -122,10 +122,11 @@ export async function getOrganizationActivityFeed(filters?: {
 	// 2. Ingest Audit Logs for Member & Department Lifecycle
 	for (const log of rawAuditLogs) {
 		const actor = log.actorId ? userMap.get(log.actorId) : null;
-		let meta: any = {};
+		let meta: { username?: string; newRole?: string; newHeadUserId?: string; tasksPublished?: number } =
+			{};
 		try {
 			if (log.metadata) meta = JSON.parse(log.metadata);
-		} catch {}
+		} catch { /* malformed JSON: keep the default */ }
 
 		if (log.action === 'USER_CREATE') {
 			const targetUser = log.targetId ? userMap.get(log.targetId) : null;

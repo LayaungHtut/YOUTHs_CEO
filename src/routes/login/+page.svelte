@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Shield, Lock, AlertCircle, ArrowRight } from '@lucide/svelte';
+	import { Lock, AlertCircle, ArrowRight } from '@lucide/svelte';
 
-	let { form, data } = $props();
+	let { form } = $props();
 </script>
 
 <div class="flex min-h-screen items-center justify-center p-6 bg-slate-950">
@@ -56,7 +56,7 @@
 
 			<button
 				type="submit"
-				class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition duration-150 flex items-center justify-center gap-2 mt-2"
+				class="w-full py-3 px-4 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition duration-150 flex items-center justify-center gap-2 mt-2"
 			>
 				<Lock class="w-4 h-4" />
 				<span>Authenticate to Command Center</span>

@@ -1,11 +1,10 @@
 import crypto from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { eq, and, or, sql, desc, asc, inArray, gte, lte } from 'drizzle-orm';
+import { eq, and, or, sql, desc, asc, inArray, gte, lte, notExists, type SQL } from 'drizzle-orm';
 import * as schema from './schema';
 import type {
 	Department,
-	NewDepartment,
 	User,
 	NewUser,
 	Session,
@@ -149,11 +148,10 @@ export class PostgresStore {
 						.onConflictDoNothing();
 				}
 			}
+			this.initialized = true;
 		} catch (err) {
 			console.warn('[PostgresStore] Initialization check warning:', err);
 		}
-
-		this.initialized = true;
 	}
 
 	public resetForTesting(): void {
@@ -237,7 +235,7 @@ export class PostgresStore {
 		accountStatus?: 'ACTIVE' | 'SUSPENDED' | 'INVITED';
 		search?: string;
 	}): Promise<User[]> {
-		const conditions: any[] = [];
+		const conditions: (SQL | undefined)[] = [];
 		if (filters?.departmentId) {
 			conditions.push(eq(schema.users.departmentId, filters.departmentId));
 		}
@@ -302,12 +300,6 @@ export class PostgresStore {
 		const user = await this.getUserById(id);
 		if (!user) return false;
 
-		// 1. Clear department head assignment if user was head
-		await this.drizzle
-			.update(schema.departments)
-			.set({ headUserId: null, updatedAt: new Date() })
-			.where(eq(schema.departments.headUserId, id));
-
 		// Find a fallback admin (CEO) if reassignAdminId is not provided
 		let fallbackAdminId = reassignAdminId;
 		if (!fallbackAdminId) {
@@ -319,42 +311,35 @@ export class PostgresStore {
 			fallbackAdminId = ceo?.id;
 		}
 
-		// 2. Reassign tasks.createdBy (has onDelete: 'restrict')
-		if (fallbackAdminId) {
-			await this.drizzle
-				.update(schema.tasks)
-				.set({ createdBy: fallbackAdminId, updatedAt: new Date() })
-				.where(eq(schema.tasks.createdBy, id));
-		}
+		const now = new Date();
+		// tasks.createdBy and taskEvents.actorId are onDelete 'restrict': reassign them first
+		const reassign = fallbackAdminId
+			? [
+					this.drizzle
+						.update(schema.tasks)
+						.set({ createdBy: fallbackAdminId, updatedAt: now })
+						.where(eq(schema.tasks.createdBy, id)),
+					this.drizzle
+						.update(schema.taskEvents)
+						.set({ actorId: fallbackAdminId })
+						.where(eq(schema.taskEvents.actorId, id))
+				]
+			: [this.drizzle.delete(schema.taskEvents).where(eq(schema.taskEvents.actorId, id))];
 
-		// 3. Reassign or delete taskEvents.actorId (has onDelete: 'restrict')
-		if (fallbackAdminId) {
-			await this.drizzle
-				.update(schema.taskEvents)
-				.set({ actorId: fallbackAdminId })
-				.where(eq(schema.taskEvents.actorId, id));
-		} else {
-			await this.drizzle
-				.delete(schema.taskEvents)
-				.where(eq(schema.taskEvents.actorId, id));
-		}
-
-		// 4. Delete tasks assigned to this user
-		await this.drizzle
-			.delete(schema.tasks)
-			.where(eq(schema.tasks.assignedTo, id));
-
-		// 5. Delete user from users table
-		// PostgreSQL foreign keys with CASCADE will automatically clean up:
-		// sessions, memberDatabaseConnections, memberProgressSnapshots, pointsLedger,
-		// memberAchievements, conversationParticipants, messages, messageReadReceipts, notifications
-		// And foreign keys with SET NULL will clean up taskWeeks.createdBy, auditLogs.actorId, orgSettings.updatedBy
-		const res = await this.drizzle
-			.delete(schema.users)
-			.where(eq(schema.users.id, id))
-			.returning({ id: schema.users.id });
-
-		return res.length > 0;
+		// One transaction. Foreign keys clean up the rest: CASCADE removes sessions, connections,
+		// snapshots, points, achievements, participants, messages, receipts and notifications;
+		// SET NULL clears taskWeeks.createdBy, auditLogs.actorId and orgSettings.updatedBy.
+		const results = await this.drizzle.batch([
+			this.drizzle
+				.update(schema.departments)
+				.set({ headUserId: null, updatedAt: now })
+				.where(eq(schema.departments.headUserId, id)),
+			...reassign,
+			this.drizzle.delete(schema.tasks).where(eq(schema.tasks.assignedTo, id)),
+			this.drizzle.delete(schema.users).where(eq(schema.users.id, id)).returning({ id: schema.users.id })
+		]);
+		const deleted = results[results.length - 1] as { id: string }[];
+		return deleted.length > 0;
 	}
 
 	async countCeoUsers(): Promise<number> {
@@ -487,7 +472,7 @@ export class PostgresStore {
 		priority?: Task['priority'];
 		search?: string;
 	}): Promise<Task[]> {
-		const conditions: any[] = [];
+		const conditions: (SQL | undefined)[] = [];
 		if (filters?.departmentId) conditions.push(eq(schema.tasks.departmentId, filters.departmentId));
 		if (filters?.assignedTo) conditions.push(eq(schema.tasks.assignedTo, filters.assignedTo));
 		if (filters?.createdBy) conditions.push(eq(schema.tasks.createdBy, filters.createdBy));
@@ -603,7 +588,7 @@ export class PostgresStore {
 		endDate?: Date;
 		sort?: 'newest' | 'oldest';
 	}): Promise<Array<TaskEvent & { task?: Task; actor?: User | null }>> {
-		const conditions: any[] = [];
+		const conditions: (SQL | undefined)[] = [];
 		if (filters?.eventType) conditions.push(eq(schema.taskEvents.eventType, filters.eventType));
 		if (filters?.source) conditions.push(eq(schema.taskEvents.source, filters.source));
 		if (filters?.startDate) conditions.push(gte(schema.taskEvents.createdAt, filters.startDate));
@@ -800,11 +785,6 @@ export class PostgresStore {
 	}
 
 	async addPointsTransaction(tx: NewPointsTransaction): Promise<PointsTransaction> {
-		const existing = await this.getPointsTransactionByIdempotencyKey(tx.idempotencyKey);
-		if (existing) {
-			return existing;
-		}
-
 		const id = tx.id || crypto.randomUUID();
 		const [created] = await this.drizzle
 			.insert(schema.pointsLedger)
@@ -815,8 +795,10 @@ export class PostgresStore {
 				createdBy: tx.createdBy || null,
 				createdAt: tx.createdAt || new Date()
 			})
+			.onConflictDoNothing({ target: schema.pointsLedger.idempotencyKey })
 			.returning();
-		return created;
+		// no row: this key was already recorded (possibly by a request running at the same time)
+		return created ?? (await this.getPointsTransactionByIdempotencyKey(tx.idempotencyKey))!;
 	}
 
 	async getUserPointsBalance(userId: string): Promise<number> {
@@ -884,32 +866,20 @@ export class PostgresStore {
 		achievementId: string,
 		metadata?: string
 	): Promise<MemberAchievement | null> {
-		const [existing] = await this.drizzle
-			.select()
-			.from(schema.memberAchievements)
-			.where(
-				and(
-					eq(schema.memberAchievements.userId, userId),
-					eq(schema.memberAchievements.achievementId, achievementId)
-				)
-			)
-			.limit(1);
-		if (existing) {
-			return existing;
-		}
-
-		const id = crypto.randomUUID();
 		const [created] = await this.drizzle
 			.insert(schema.memberAchievements)
 			.values({
-				id,
+				id: crypto.randomUUID(),
 				userId,
 				achievementId,
 				unlockedAt: new Date(),
 				metadata: metadata || null
 			})
+			.onConflictDoNothing({
+				target: [schema.memberAchievements.userId, schema.memberAchievements.achievementId]
+			})
 			.returning();
-		return created;
+		return created ?? null;
 	}
 
 	async getAllMemberAchievements(): Promise<MemberAchievement[]> {
@@ -941,28 +911,22 @@ export class PostgresStore {
 	}
 
 	async getDirectConversation(userAId: string, userBId: string): Promise<Conversation | null> {
-		const convs = await this.drizzle
-			.select({ id: schema.conversations.id })
-			.from(schema.conversations)
-			.where(eq(schema.conversations.conversationType, 'DIRECT'));
-
-		for (const c of convs) {
-			const parts = await this.drizzle
-				.select({ userId: schema.conversationParticipants.userId })
-				.from(schema.conversationParticipants)
-				.where(eq(schema.conversationParticipants.conversationId, c.id));
-			if (parts.length === 2) {
-				const ids = parts.map((p) => p.userId);
-				if (ids.includes(userAId) && ids.includes(userBId)) {
-					const [found] = await this.drizzle
-						.select()
-						.from(schema.conversations)
-						.where(eq(schema.conversations.id, c.id));
-					return found || null;
-				}
-			}
-		}
-		return null;
+		const cp = schema.conversationParticipants;
+		const [match] = await this.drizzle
+			.select({ id: cp.conversationId })
+			.from(cp)
+			.innerJoin(schema.conversations, eq(schema.conversations.id, cp.conversationId))
+			.where(eq(schema.conversations.conversationType, 'DIRECT'))
+			.groupBy(cp.conversationId)
+			.having(
+				and(
+					sql`count(*) = 2`,
+					sql`bool_or(${cp.userId} = ${userAId})`,
+					sql`bool_or(${cp.userId} = ${userBId})`
+				)
+			)
+			.limit(1);
+		return match ? this.getConversationById(match.id) : null;
 	}
 
 	async createConversation(
@@ -1097,10 +1061,10 @@ export class PostgresStore {
 			.limit(1);
 		if (!msg) return null;
 
-		let editHistoryArr: any[] = [];
+		let editHistoryArr: { content: string; editedAt: Date | string }[] = [];
 		try {
 			if (msg.editHistory) editHistoryArr = JSON.parse(msg.editHistory);
-		} catch {}
+		} catch { /* malformed JSON: keep the default */ }
 		editHistoryArr.push({ content: msg.content, editedAt: new Date() });
 
 		const [updated] = await this.drizzle
@@ -1125,98 +1089,64 @@ export class PostgresStore {
 	}
 
 	async markMessageRead(messageId: string, userId: string): Promise<MessageReadReceipt> {
-		const [existing] = await this.drizzle
-			.select()
-			.from(schema.messageReadReceipts)
-			.where(
-				and(
-					eq(schema.messageReadReceipts.messageId, messageId),
-					eq(schema.messageReadReceipts.userId, userId)
-				)
-			)
-			.limit(1);
-		if (existing) {
-			return existing;
-		}
-
-		const id = crypto.randomUUID();
+		const receipt = and(
+			eq(schema.messageReadReceipts.messageId, messageId),
+			eq(schema.messageReadReceipts.userId, userId)
+		);
 		const [created] = await this.drizzle
 			.insert(schema.messageReadReceipts)
-			.values({
-				id,
-				messageId,
-				userId,
-				readAt: new Date()
+			.values({ id: crypto.randomUUID(), messageId, userId, readAt: new Date() })
+			.onConflictDoNothing({
+				target: [schema.messageReadReceipts.messageId, schema.messageReadReceipts.userId]
 			})
 			.returning();
-		return created;
+		if (created) return created;
+		const [existing] = await this.drizzle.select().from(schema.messageReadReceipts).where(receipt).limit(1);
+		return existing;
+	}
+
+	private unreadBy(conversationId: string, userId: string) {
+		return and(
+			eq(schema.messages.conversationId, conversationId),
+			sql`${schema.messages.senderId} != ${userId}`,
+			notExists(
+				this.drizzle
+					.select({ id: schema.messageReadReceipts.id })
+					.from(schema.messageReadReceipts)
+					.where(
+						and(
+							eq(schema.messageReadReceipts.messageId, schema.messages.id),
+							eq(schema.messageReadReceipts.userId, userId)
+						)
+					)
+			)
+		);
 	}
 
 	async markConversationRead(conversationId: string, userId: string): Promise<number> {
-		const otherMsgs = await this.drizzle
+		const unread = await this.drizzle
 			.select({ id: schema.messages.id })
 			.from(schema.messages)
-			.where(
-				and(
-					eq(schema.messages.conversationId, conversationId),
-					sql`${schema.messages.senderId} != ${userId}`
-				)
-			);
+			.where(this.unreadBy(conversationId, userId));
+		if (unread.length === 0) return 0;
 
-		let readCount = 0;
 		const now = new Date();
-		for (const m of otherMsgs) {
-			const [receipt] = await this.drizzle
-				.select({ id: schema.messageReadReceipts.id })
-				.from(schema.messageReadReceipts)
-				.where(
-					and(
-						eq(schema.messageReadReceipts.messageId, m.id),
-						eq(schema.messageReadReceipts.userId, userId)
-					)
-				)
-				.limit(1);
-			if (!receipt) {
-				await this.drizzle.insert(schema.messageReadReceipts).values({
-					id: crypto.randomUUID(),
-					messageId: m.id,
-					userId,
-					readAt: now
-				});
-				readCount++;
-			}
-		}
-		return readCount;
+		const inserted = await this.drizzle
+			.insert(schema.messageReadReceipts)
+			.values(unread.map((m) => ({ id: crypto.randomUUID(), messageId: m.id, userId, readAt: now })))
+			.onConflictDoNothing({
+				target: [schema.messageReadReceipts.messageId, schema.messageReadReceipts.userId]
+			})
+			.returning({ id: schema.messageReadReceipts.id });
+		return inserted.length;
 	}
 
 	async getUnreadCountForConversation(conversationId: string, userId: string): Promise<number> {
-		const otherMsgs = await this.drizzle
-			.select({ id: schema.messages.id })
+		const [res] = await this.drizzle
+			.select({ count: sql<number>`count(*)::int` })
 			.from(schema.messages)
-			.where(
-				and(
-					eq(schema.messages.conversationId, conversationId),
-					sql`${schema.messages.senderId} != ${userId}`,
-					sql`${schema.messages.deletedAt} is null`
-				)
-			);
-		if (otherMsgs.length === 0) return 0;
-
-		let count = 0;
-		for (const m of otherMsgs) {
-			const [receipt] = await this.drizzle
-				.select({ id: schema.messageReadReceipts.id })
-				.from(schema.messageReadReceipts)
-				.where(
-					and(
-						eq(schema.messageReadReceipts.messageId, m.id),
-						eq(schema.messageReadReceipts.userId, userId)
-					)
-				)
-				.limit(1);
-			if (!receipt) count++;
-		}
-		return count;
+			.where(and(this.unreadBy(conversationId, userId), sql`${schema.messages.deletedAt} is null`));
+		return Number(res?.count || 0);
 	}
 
 	async searchMessages(params: {
@@ -1363,7 +1293,7 @@ export class PostgresStore {
 		limit?: number;
 		offset?: number;
 	}): Promise<{ logs: AuditLog[]; total: number }> {
-		const conditions: any[] = [];
+		const conditions: (SQL | undefined)[] = [];
 		if (filters?.actorId) {
 			conditions.push(eq(schema.auditLogs.actorId, filters.actorId));
 		}

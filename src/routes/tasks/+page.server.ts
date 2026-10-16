@@ -5,7 +5,6 @@ import { requireRole } from '$lib/server/auth/permissions';
 import {
 	createManualTask,
 	updateTaskStatus,
-	updateTaskDetails,
 	cancelTask
 } from '$lib/server/services/taskService';
 import type { TaskPriority, TaskSource, TaskStatus } from '$lib/server/db/types';
@@ -88,8 +87,8 @@ export const actions: Actions = {
 			});
 
 			return { success: true, count: created.length };
-		} catch (err: any) {
-			return fail(500, { error: err.message || 'Failed to create tasks.' });
+		} catch (err) {
+			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to create tasks.' });
 		}
 	},
 

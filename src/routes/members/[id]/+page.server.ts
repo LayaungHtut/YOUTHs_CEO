@@ -152,10 +152,10 @@ export const actions: Actions = {
 					departmentId: target.departmentId
 				}
 			});
-		} catch (err: any) {
+		} catch (err) {
 			console.error('[deleteMember] Error deleting member:', err);
 			return fail(500, {
-				error: err?.message || 'Failed to remove member account.'
+				error: (err instanceof Error && err.message) || 'Failed to remove member account.'
 			});
 		}
 

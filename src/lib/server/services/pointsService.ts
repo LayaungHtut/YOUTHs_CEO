@@ -1,5 +1,5 @@
 import { db } from '../db';
-import type { PointsTransaction, PointsTransactionType } from '../db/types';
+import type { PointsTransaction } from '../db/types';
 import { logAudit, AuditActions } from './auditService';
 
 export async function grantInitialPoints(userId: string, creatorId?: string): Promise<PointsTransaction> {

@@ -2,15 +2,9 @@
 	import {
 		History,
 		Filter,
-		ArrowUpDown,
-		Search,
-		Calendar,
 		ArrowLeft,
 		CheckSquare,
 		ExternalLink,
-		Bot,
-		ShieldCheck,
-		RotateCcw
 	} from '@lucide/svelte';
 
 	let { data } = $props();
@@ -38,6 +32,7 @@
 	});
 
 	function applyFilters() {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local value, only used to build the URL
 		const params = new URLSearchParams();
 		if (selectedMember) params.set('memberId', selectedMember);
 		if (selectedDept) params.set('departmentId', selectedDept);
@@ -122,7 +117,7 @@
 					class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
 				>
 					<option value="">All Members</option>
-					{#each data.users as u}
+					{#each data.users as u (u.id)}
 						<option value={u.id}>{u.fullName}</option>
 					{/each}
 				</select>
@@ -136,7 +131,7 @@
 					class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
 				>
 					<option value="">All Departments</option>
-					{#each data.departments as d}
+					{#each data.departments as d (d.id)}
 						<option value={d.id}>{d.name}</option>
 					{/each}
 				</select>
@@ -260,7 +255,7 @@
 			</div>
 		{:else}
 			<div class="divide-y divide-slate-800/60">
-				{#each data.events as ev}
+				{#each data.events as ev (ev.id)}
 					<div class="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-slate-800/30 transition">
 						<div class="space-y-1 min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">

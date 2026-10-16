@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../db';
+import type { User } from '../db/types';
 import {
 	getOrCreateDirectConversation,
 	getUserConversations,
@@ -13,9 +14,9 @@ import {
 } from './chatService';
 
 describe('Persistent Chat History Service', () => {
-	let ceoUser: any;
-	let memberUserA: any;
-	let memberUserB: any;
+	let ceoUser: User;
+	let memberUserA: User;
+	let memberUserB: User;
 
 	beforeEach(async () => {
 		db.resetForTesting();
@@ -119,9 +120,9 @@ describe('Persistent Chat History Service', () => {
 		});
 
 		const updated = await editChatMessage(msg.id, ceoUser.id, 'Revised proposal v2');
-		expect(updated).not.null;
+		expect(updated).toBeTruthy();
 		expect(updated?.content).toBe('Revised proposal v2');
-		expect(updated?.editedAt).not.null;
+		expect(updated?.editedAt).toBeTruthy();
 
 		// Check edit history
 		const history = JSON.parse(updated?.editHistory || '[]');
@@ -142,13 +143,13 @@ describe('Persistent Chat History Service', () => {
 
 		// Verify message record in DB has deletedAt set
 		const inDb = await db.getMessageById(msg.id);
-		expect(inDb?.deletedAt).not.null;
+		expect(inDb?.deletedAt).toBeTruthy();
 
 		// When querying conversation, soft-deleted message is preserved with timestamp
 		const allInConv = await db.getMessages(conv.id);
 		const target = allInConv.find((m) => m.id === msg.id);
 		expect(target).toBeDefined();
-		expect(target?.deletedAt).not.null;
+		expect(target?.deletedAt).toBeTruthy();
 	});
 
 	it('searches message history by query, sender, and respects permissions', async () => {
