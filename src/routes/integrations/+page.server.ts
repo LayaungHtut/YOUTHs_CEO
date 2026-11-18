@@ -5,7 +5,8 @@ import { requireRole } from '$lib/server/auth/permissions';
 import {
 	generateIntegrationToken,
 	revokeIntegrationToken,
-	importProgressFallback
+	importProgressFallback,
+	MAX_IMPORT_FILE_BYTES
 } from '$lib/server/services/progressSyncService';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -69,6 +70,17 @@ export const actions: Actions = {
 			return fail(400, { error: 'Please choose a CSV or JSON progress file.' });
 		}
 
+		// SAST-03: reject oversized uploads before reading the whole file into memory.
+		if (file.size > MAX_IMPORT_FILE_BYTES) {
+			return fail(413, {
+				error: `File is too large. The maximum import size is ${Math.floor(MAX_IMPORT_FILE_BYTES / (1024 * 1024))} MB.`
+			});
+		}
+
+		if (fileType !== 'csv' && fileType !== 'json') {
+			return fail(400, { error: 'Unsupported file type. Choose CSV or JSON.' });
+		}
+
 		try {
 			const text = await file.text();
 			const result = await importProgressFallback(text, fileType, locals.user!.id);
@@ -86,7 +98,9 @@ export const actions: Actions = {
 				totalProcessed: result.totalProcessed
 			};
 		} catch (err) {
-			return fail(500, { error: (err instanceof Error && err.message) || 'Failed to process file' });
+			return fail(500, {
+				error: (err instanceof Error && err.message) || 'Failed to process file'
+			});
 		}
 	}
 };

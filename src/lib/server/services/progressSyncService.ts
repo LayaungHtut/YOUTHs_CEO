@@ -5,21 +5,37 @@ import type { MemberProgressSnapshot, TaskStatus } from '../db/types';
 import { logAudit, AuditActions } from './auditService';
 import { updateTaskStatus } from './taskService';
 
+// SAST-03: explicit upper bounds so an authenticated client cannot exhaust server
+// resources with an unbounded payload, task list or over-long identifier.
+/** Largest accepted fallback import file (bytes). */
+export const MAX_IMPORT_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+/** Largest accepted request body for the REST sync endpoint (bytes). */
+export const MAX_SYNC_BODY_BYTES = 512 * 1024; // 512 KB
+/** Largest number of task items accepted in one sync payload. */
+export const MAX_SYNC_TASKS = 500;
+/** Largest number of CSV data rows accepted in one fallback import. */
+export const MAX_IMPORT_CSV_ROWS = 5000;
+/** Largest number of JSON payload objects accepted in one fallback import. */
+export const MAX_IMPORT_JSON_PAYLOADS = 200;
+
+const MAX_ID_LENGTH = 128;
+const MAX_TIMESTAMP_LENGTH = 64;
+
 // Schema for Progress Synchronization Contract v1
 export const ProgressTaskItemSchema = z.object({
-	taskId: z.string().min(1),
+	taskId: z.string().min(1).max(MAX_ID_LENGTH),
 	status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE']),
 	progressPercentage: z.number().min(0).max(100),
-	completedAt: z.string().nullable().optional(),
-	updatedAt: z.string().optional()
+	completedAt: z.string().max(MAX_TIMESTAMP_LENGTH).nullable().optional(),
+	updatedAt: z.string().max(MAX_TIMESTAMP_LENGTH).optional()
 });
 
 export const SyncPayloadSchema = z.object({
 	schemaVersion: z.literal(1),
-	memberId: z.string().min(1),
-	weekId: z.string().nullable().optional(),
-	tasks: z.array(ProgressTaskItemSchema),
-	lastUpdatedAt: z.string()
+	memberId: z.string().min(1).max(MAX_ID_LENGTH),
+	weekId: z.string().max(MAX_ID_LENGTH).nullable().optional(),
+	tasks: z.array(ProgressTaskItemSchema).max(MAX_SYNC_TASKS),
+	lastUpdatedAt: z.string().max(MAX_TIMESTAMP_LENGTH)
 });
 
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
@@ -27,7 +43,10 @@ export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 /**
  * Generates an integration token for a member and saves its SHA-256 hash
  */
-export async function generateIntegrationToken(userId: string, actorId?: string): Promise<{ token: string; prefix: string }> {
+export async function generateIntegrationToken(
+	userId: string,
+	actorId?: string
+): Promise<{ token: string; prefix: string }> {
 	const rawRandom = crypto.randomBytes(24).toString('hex');
 	const token = `yt_sync_${rawRandom}`;
 	const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -105,13 +124,17 @@ export async function ingestProgressSync(
 	for (const taskUpdate of payload.tasks) {
 		const existingTask = await db.getTaskById(taskUpdate.taskId);
 		if (!existingTask) {
-			console.warn(`Sync warning: Task ${taskUpdate.taskId} does not exist in CEO database. Skipping.`);
+			console.warn(
+				`Sync warning: Task ${taskUpdate.taskId} does not exist in CEO database. Skipping.`
+			);
 			continue;
 		}
 
 		// Security constraint: Member can only report progress on tasks assigned to them
 		if (existingTask.assignedTo !== authenticatedMemberId) {
-			console.warn(`Security violation: Member ${authenticatedMemberId} attempted to sync task assigned to ${existingTask.assignedTo}`);
+			console.warn(
+				`Security violation: Member ${authenticatedMemberId} attempted to sync task assigned to ${existingTask.assignedTo}`
+			);
 			continue;
 		}
 
@@ -178,10 +201,30 @@ export async function importProgressFallback(
 	const errors: string[] = [];
 	let count = 0;
 
+	// SAST-03: bound the parsed payload even when the caller skipped the upload-size check.
+	if (Buffer.byteLength(fileContent, 'utf8') > MAX_IMPORT_FILE_BYTES) {
+		return {
+			success: false,
+			totalProcessed: 0,
+			errors: [
+				`File exceeds the ${Math.floor(MAX_IMPORT_FILE_BYTES / (1024 * 1024))} MB import limit.`
+			]
+		};
+	}
+
 	if (fileType === 'json') {
 		try {
 			const parsed = JSON.parse(fileContent);
 			const items = Array.isArray(parsed) ? parsed : [parsed];
+			if (items.length > MAX_IMPORT_JSON_PAYLOADS) {
+				return {
+					success: false,
+					totalProcessed: 0,
+					errors: [
+						`JSON file contains ${items.length} payloads; the limit is ${MAX_IMPORT_JSON_PAYLOADS}.`
+					]
+				};
+			}
 			for (const item of items) {
 				const validated = SyncPayloadSchema.safeParse(item);
 				if (!validated.success) {
@@ -202,12 +245,20 @@ export async function importProgressFallback(
 			errors.push('Empty or header-only CSV file');
 			return { success: false, totalProcessed: 0, errors };
 		}
+		if (lines.length - 1 > MAX_IMPORT_CSV_ROWS) {
+			errors.push(
+				`CSV file contains ${lines.length - 1} rows; the limit is ${MAX_IMPORT_CSV_ROWS}.`
+			);
+			return { success: false, totalProcessed: 0, errors };
+		}
 
 		// Skip header line
 		for (let i = 1; i < lines.length; i++) {
 			const cols = lines[i].split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
 			if (cols.length < 4) {
-				errors.push(`Line ${i + 1}: insufficient columns (expected memberId,taskId,status,progressPercentage)`);
+				errors.push(
+					`Line ${i + 1}: insufficient columns (expected memberId,taskId,status,progressPercentage)`
+				);
 				continue;
 			}
 

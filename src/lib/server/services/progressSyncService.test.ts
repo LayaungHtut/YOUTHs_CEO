@@ -5,7 +5,12 @@ import {
 	authenticateSyncToken,
 	revokeIntegrationToken,
 	ingestProgressSync,
-	importProgressFallback
+	importProgressFallback,
+	SyncPayloadSchema,
+	MAX_SYNC_TASKS,
+	MAX_IMPORT_FILE_BYTES,
+	MAX_IMPORT_CSV_ROWS,
+	MAX_IMPORT_JSON_PAYLOADS
 } from './progressSyncService';
 
 describe('Progress Synchronization Service', () => {
@@ -167,5 +172,75 @@ describe('Progress Synchronization Service', () => {
 
 		const updatedTask = await db.getTaskById(task.id);
 		expect(updatedTask?.status).toBe('IN_PROGRESS');
+	});
+
+	describe('payload limits (SAST-03)', () => {
+		const taskItem = {
+			taskId: 'task-1',
+			status: 'COMPLETED' as const,
+			progressPercentage: 100
+		};
+
+		it('accepts a payload at the task-count limit', () => {
+			const parsed = SyncPayloadSchema.safeParse({
+				schemaVersion: 1,
+				memberId: 'member-1',
+				tasks: Array.from({ length: MAX_SYNC_TASKS }, () => taskItem),
+				lastUpdatedAt: new Date().toISOString()
+			});
+			expect(parsed.success).toBe(true);
+		});
+
+		it('rejects a payload above the task-count limit', () => {
+			const parsed = SyncPayloadSchema.safeParse({
+				schemaVersion: 1,
+				memberId: 'member-1',
+				tasks: Array.from({ length: MAX_SYNC_TASKS + 1 }, () => taskItem),
+				lastUpdatedAt: new Date().toISOString()
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects over-long identifiers', () => {
+			const parsed = SyncPayloadSchema.safeParse({
+				schemaVersion: 1,
+				memberId: 'm'.repeat(5000),
+				tasks: [taskItem],
+				lastUpdatedAt: new Date().toISOString()
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects an import file above the size limit', async () => {
+			const oversized = 'x'.repeat(MAX_IMPORT_FILE_BYTES + 1);
+			const result = await importProgressFallback(oversized, 'csv', 'actor-1');
+			expect(result.success).toBe(false);
+			expect(result.totalProcessed).toBe(0);
+			expect(result.errors[0]).toMatch(/import limit/i);
+		});
+
+		it('rejects a CSV with more rows than the limit', async () => {
+			const rows = ['memberId,taskId,status,progressPercentage'];
+			for (let i = 0; i < MAX_IMPORT_CSV_ROWS + 1; i++) {
+				rows.push(`m-${i},t-${i},COMPLETED,100`);
+			}
+			const result = await importProgressFallback(rows.join('\n'), 'csv', 'actor-1');
+			expect(result.success).toBe(false);
+			expect(result.totalProcessed).toBe(0);
+			expect(result.errors[0]).toMatch(/limit is/i);
+		});
+
+		it('rejects a JSON file with more payloads than the limit', async () => {
+			const payloads = Array.from({ length: MAX_IMPORT_JSON_PAYLOADS + 1 }, () => ({
+				schemaVersion: 1,
+				memberId: 'member-1',
+				tasks: [taskItem],
+				lastUpdatedAt: new Date().toISOString()
+			}));
+			const result = await importProgressFallback(JSON.stringify(payloads), 'json', 'actor-1');
+			expect(result.success).toBe(false);
+			expect(result.totalProcessed).toBe(0);
+			expect(result.errors[0]).toMatch(/limit is/i);
+		});
 	});
 });

@@ -10,7 +10,8 @@ import {
 	editChatMessage,
 	deleteChatMessage,
 	searchUserMessages,
-	markConversationMessagesRead
+	markConversationMessagesRead,
+	markChatRead
 } from './chatService';
 
 describe('Persistent Chat History Service', () => {
@@ -189,9 +190,21 @@ describe('Persistent Chat History Service', () => {
 		const conv = await getOrCreateDirectConversation(ceoUser.id, memberUserA.id);
 
 		// Alice sends 3 messages to CEO
-		await sendChatMessage({ conversationId: conv.id, senderId: memberUserA.id, content: 'Update 1' });
-		await sendChatMessage({ conversationId: conv.id, senderId: memberUserA.id, content: 'Update 2' });
-		await sendChatMessage({ conversationId: conv.id, senderId: memberUserA.id, content: 'Update 3' });
+		await sendChatMessage({
+			conversationId: conv.id,
+			senderId: memberUserA.id,
+			content: 'Update 1'
+		});
+		await sendChatMessage({
+			conversationId: conv.id,
+			senderId: memberUserA.id,
+			content: 'Update 2'
+		});
+		await sendChatMessage({
+			conversationId: conv.id,
+			senderId: memberUserA.id,
+			content: 'Update 3'
+		});
 
 		// CEO's unread count should be 3
 		let convs = await getUserConversations(ceoUser.id);
@@ -203,6 +216,51 @@ describe('Persistent Chat History Service', () => {
 
 		convs = await getUserConversations(ceoUser.id);
 		expect(convs[0].unreadCount).toBe(0);
+	});
+
+	it('lets a participant record a read receipt for a message in their conversation', async () => {
+		const conv = await getOrCreateDirectConversation(ceoUser.id, memberUserA.id);
+		const msg = await sendChatMessage({
+			conversationId: conv.id,
+			senderId: memberUserA.id,
+			content: 'Status update'
+		});
+
+		const receipt = await markChatRead(msg.id, ceoUser.id);
+		expect(receipt).not.toBeNull();
+		expect(receipt?.userId).toBe(ceoUser.id);
+		expect(receipt?.messageId).toBe(msg.id);
+	});
+
+	it('refuses a read receipt from a user outside the conversation', async () => {
+		const conv = await getOrCreateDirectConversation(ceoUser.id, memberUserA.id);
+		const msg = await sendChatMessage({
+			conversationId: conv.id,
+			senderId: ceoUser.id,
+			content: 'Executive secret strategy'
+		});
+
+		await expect(markChatRead(msg.id, memberUserB.id)).rejects.toThrow(
+			'Forbidden: You are not a participant in this conversation'
+		);
+
+		const convs = await getUserConversations(memberUserA.id);
+		expect(convs[0].unreadCount).toBe(1);
+	});
+
+	it('returns null when marking a message that does not exist as read', async () => {
+		await expect(
+			markChatRead('00000000-0000-0000-0000-000000000000', ceoUser.id)
+		).resolves.toBeNull();
+	});
+
+	it('refuses to mark a whole conversation read for a non-participant', async () => {
+		const conv = await getOrCreateDirectConversation(ceoUser.id, memberUserA.id);
+		await sendChatMessage({ conversationId: conv.id, senderId: ceoUser.id, content: 'Private' });
+
+		await expect(markConversationMessagesRead(conv.id, memberUserB.id)).rejects.toThrow(
+			'Forbidden: You are not a participant in this conversation'
+		);
 	});
 
 	it('prevents unauthorized users from retrieving other private conversations', async () => {

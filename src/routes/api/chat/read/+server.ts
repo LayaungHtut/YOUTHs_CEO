@@ -17,6 +17,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ error: 'messageId is required' }, { status: 400 });
 	}
 
-	await markChatRead(body.messageId, locals.user.id);
+	try {
+		const receipt = await markChatRead(body.messageId, locals.user.id);
+		if (!receipt) {
+			return json({ error: 'Message not found' }, { status: 404 });
+		}
+	} catch (err) {
+		if (err instanceof Error && err.message.startsWith('Forbidden')) {
+			return json({ error: err.message }, { status: 403 });
+		}
+		throw err;
+	}
+
 	return json({ success: true });
 };

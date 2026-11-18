@@ -8,7 +8,10 @@ class ChatPubSub extends EventEmitter {}
 export const chatEmitter = new ChatPubSub();
 chatEmitter.setMaxListeners(200);
 
-export async function getOrCreateDirectConversation(userAId: string, userBId: string): Promise<Conversation> {
+export async function getOrCreateDirectConversation(
+	userAId: string,
+	userBId: string
+): Promise<Conversation> {
 	const existing = await db.getDirectConversation(userAId, userBId);
 	if (existing) return existing;
 
@@ -120,7 +123,11 @@ export async function sendChatMessage(params: {
 	return message;
 }
 
-export async function editChatMessage(messageId: string, userId: string, newContent: string): Promise<Message | null> {
+export async function editChatMessage(
+	messageId: string,
+	userId: string,
+	newContent: string
+): Promise<Message | null> {
 	const msg = await db.getMessageById(messageId);
 	if (!msg) return null;
 	if (msg.senderId !== userId) {
@@ -156,11 +163,29 @@ export async function deleteChatMessage(messageId: string, userId: string): Prom
 	return success;
 }
 
+/**
+ * SAST-04: a read receipt may only be written by a participant of the message's
+ * own conversation. Returns null when the message does not exist so callers can
+ * answer 404; throws for a non-participant so callers can answer 403.
+ */
 export async function markChatRead(messageId: string, userId: string) {
+	const msg = await db.getMessageById(messageId);
+	if (!msg) return null;
+
+	const participants = await db.getConversationParticipants(msg.conversationId);
+	if (!participants.includes(userId)) {
+		throw new Error('Forbidden: You are not a participant in this conversation');
+	}
+
 	return await db.markMessageRead(messageId, userId);
 }
 
 export async function markConversationMessagesRead(conversationId: string, userId: string) {
+	const participants = await db.getConversationParticipants(conversationId);
+	if (!participants.includes(userId)) {
+		throw new Error('Forbidden: You are not a participant in this conversation');
+	}
+
 	const count = await db.markConversationRead(conversationId, userId);
 	if (count > 0) {
 		chatEmitter.emit(`conversation:${conversationId}:read`, { userId });

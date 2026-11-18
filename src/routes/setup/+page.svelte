@@ -21,7 +21,7 @@
 			<img
 				src="/logo.png"
 				alt="YOUTHs Logo"
-				class="mx-auto h-16 w-16 object-contain rounded-2xl drop-shadow-xl mb-2"
+				class="mx-auto mb-2 h-16 w-16 rounded-2xl object-contain drop-shadow-xl"
 			/>
 			<h1 class="text-2xl font-bold tracking-tight text-white">YOUTHs CEO Command Center</h1>
 			<p class="text-sm text-slate-400">
@@ -169,14 +169,14 @@
 					class="mb-1.5 block text-xs font-semibold tracking-wider text-slate-400 uppercase"
 				>
 					Setup Authorization Key <span class="font-normal text-slate-500 lowercase"
-						>(optional if not configured in .env)</span
+						>(required in deployed environments)</span
 					>
 				</label>
 				<input
 					type="password"
 					id="setupSecret"
 					name="setupSecret"
-					placeholder="Leave blank unless CEO_SETUP_SECRET is enforced"
+					placeholder="Value of CEO_SETUP_SECRET on this server"
 					class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
 				/>
 			</div>
